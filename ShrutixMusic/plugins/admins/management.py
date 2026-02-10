@@ -1,5 +1,5 @@
 import time
-from pyrogram import filters
+from pyrogram import Client, filters
 from pyrogram.types import ChatPermissions, ChatPrivileges, Message
 from pyrogram.enums import ChatMemberStatus, ChatMembersFilter
 
@@ -263,4 +263,4 @@ async def demote_user(client: Client, message: Message):
             await message.reply_text("❌ Bot must be admin with 'Ban Users' permission to demote.")
         else:
             await message.reply_text(f"⚠️ Failed to demote: {e}")
-    
+            
