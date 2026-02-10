@@ -1,5 +1,31 @@
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
+def setting_markup(_):
+    buttons = [
+        [
+            InlineKeyboardButton(
+                text="Audio Quality", callback_data="AQ"
+            ),
+            InlineKeyboardButton(
+                text="Auth Users", callback_data="AU"
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text="Clean Mode", callback_data="CM"
+            ),
+            InlineKeyboardButton(
+                text="Play Mode", callback_data="PM"
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text=_["CLOSE_BUTTON"], callback_data="close"
+            ),
+        ],
+    ]
+    return buttons
+
 def audio_quality_markup(_, current):
     buttons = [
         [
