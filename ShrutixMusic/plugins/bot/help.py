@@ -49,7 +49,7 @@ async def helper_private(client, update: Union[types.Message, types.CallbackQuer
         await update.edit_message_text(
             _["help_2"],
             reply_markup=keyboard,
-            parse_mode="markdown"
+            parse_mode="md"
         )
     else:
         try:
@@ -111,7 +111,7 @@ async def help_music_domain(client, CallbackQuery, _):
     await CallbackQuery.edit_message_text(
         "🎸 **Music Management Commands**\n\nChoose a category below:",
         reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode="markdown"
+        parse_mode="md"
     )
 
 # ======================================================
@@ -123,7 +123,7 @@ async def help_security_domain(client, CallbackQuery, _):
     await CallbackQuery.edit_message_text(
         "🛡️ **Group Management Commands**\n\nChoose a category below:",
         reply_markup=InlineKeyboardMarkup(security_help_panel(_)),
-        parse_mode="markdown"
+        parse_mode="md"
     )
 
 # ======================================================
@@ -141,13 +141,13 @@ async def helper_cb(client, CallbackQuery, _):
         await CallbackQuery.edit_message_text(
             FALLBACK_HELP_DICT[cb],
             reply_markup=keyboard,
-            parse_mode="markdown"
+            parse_mode="md"
         )
     else:
         await CallbackQuery.edit_message_text(
             f"**{cb.title()} Commands**\n\nComing soon!",
             reply_markup=keyboard,
-            parse_mode="markdown"
+            parse_mode="md"
         )
 
 # ======================================================
@@ -223,5 +223,6 @@ async def security_helper_cb(client, CallbackQuery, _):
     await CallbackQuery.edit_message_text(
         text,
         reply_markup=keyboard,
-        parse_mode="markdown"
+        parse_mode="md"
     )
+
