@@ -12,6 +12,8 @@ from ShrutixMusic.utils.inline.help import (
     security_help_panel,
     security_back_markup
 )
+# private_panel import kiya taaki Start Menu load kar sakein
+from ShrutixMusic.utils.inline import private_panel 
 from config import BANNED_USERS, START_IMG_URL
 from strings import get_string
 
@@ -24,7 +26,6 @@ except ImportError:
     except ImportError:
         helpers_module = None
 
-# Fallback agar file khali mile
 FALLBACK_COMMANDS = [
     "admin", "auth", "broadcast", "blacklist", "gban", "loop", 
     "ping", "play", "playlist", "shuffle", "seek", "speed", 
@@ -35,23 +36,16 @@ FALLBACK_COMMANDS = [
 def get_helpers_dict():
     if not helpers_module:
         return {}
-    
-    # 1. Agar helpers_module already dict hai
     if isinstance(helpers_module, dict):
         return helpers_module
-    
-    # 2. Agar module hai, to uske andar 'HELPERS' ya 'helpers' dhoondho
     if isinstance(helpers_module, py_types.ModuleType):
         if hasattr(helpers_module, "HELPERS") and isinstance(helpers_module.HELPERS, dict):
             return helpers_module.HELPERS
         if hasattr(helpers_module, "helpers") and isinstance(helpers_module.helpers, dict):
             return helpers_module.helpers
-            
-        # 3. Fallback: Koi bhi dictionary dhoondho jo module me ho
         for name, val in vars(helpers_module).items():
             if not name.startswith("_") and isinstance(val, dict) and len(val) > 0:
                  return val
-
     return {}
 
 # ======================================================
@@ -84,15 +78,36 @@ async def helper_private(client, update: Union[types.Message, types.CallbackQuer
         )
 
 # ======================================================
-# 2. MUSIC MANAGEMENT CLICKED (Buttons Load Here)
+# NEW: BACK TO HOME (Start Menu)
+# ======================================================
+@nand.on_callback_query(filters.regex("settings_back_home") & ~BANNED_USERS)
+@languageCB
+async def back_to_home_cb(client, CallbackQuery, _):
+    try:
+        await CallbackQuery.answer()
+    except:
+        pass
+        
+    # Start Menu ke buttons load karo
+    out = private_panel(_)
+    
+    # Start Message ka Text (Jo strings file se aata hai)
+    # Humein user ka naam aur bot ka naam format karna padta hai
+    text = _["start_2"].format(CallbackQuery.from_user.mention, nand.mention)
+    
+    # Message ko Edit karke wapas Start Menu bana do
+    await CallbackQuery.edit_message_caption(
+        caption=text,
+        reply_markup=InlineKeyboardMarkup(out)
+    )
+
+# ======================================================
+# 2. MUSIC MANAGEMENT CLICKED
 # ======================================================
 @nand.on_callback_query(filters.regex("help_domain_music") & ~BANNED_USERS)
 @languageCB
 async def help_music_domain(client, CallbackQuery, _):
-    # Dictionary fetch karo
     help_dict = get_helpers_dict()
-    
-    # Keys ki list banao
     if help_dict:
         command_list = list(help_dict.keys())
     else:
@@ -126,19 +141,16 @@ async def help_security_domain(client, CallbackQuery, _):
     )
 
 # ======================================================
-# 4. HANDLE MUSIC SUB-MODULES (Fix Applied Here)
+# 4. HANDLE MUSIC SUB-MODULES
 # ======================================================
 @nand.on_callback_query(filters.regex(r"help_callback") & ~BANNED_USERS)
 @languageCB
 async def helper_cb(client, CallbackQuery, _):
-    # Yahan bhi dictionary fetch karo
     help_dict = get_helpers_dict()
-
     callback_data = CallbackQuery.data.strip()
     cb = callback_data.split(None, 1)[1]
     keyboard = help_back_markup(_)
     
-    # Ab 'cb in help_dict' check karega, 'module' error nahi aayega
     if cb in help_dict:
         await CallbackQuery.edit_message_text(
             help_dict[cb], reply_markup=keyboard
