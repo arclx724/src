@@ -1,181 +1,114 @@
-import time
-from pyrogram import filters
-from pyrogram.types import ChatPermissions, ChatPrivileges, Message
+from pyrogram import Client, filters
 from pyrogram.enums import ChatMemberStatus
+from pyrogram.types import Message
 
-from ShrutixMusic import nand
-from ShrutixMusic.utils import db
-
-# ==========================================================
-# CONFIG
-# ==========================================================
-ABUSE_LIMIT = 10
-ABUSE_TIME_WINDOW = 24 * 60 * 60  # 24 hours
-
-# ==========================================================
-# HELPER FUNCTIONS
-# ==========================================================
-
-async def is_power(client, chat_id: int, user_id: int) -> bool:
-    try:
-        member = await client.get_chat_member(chat_id, user_id)
-        return member.status in [
-            ChatMemberStatus.ADMINISTRATOR,
-            ChatMemberStatus.OWNER
-        ]
-    except:
-        return False
+ERROR_TEXT = "I don't know who you're talking about, you're going to need to specify a user...!"
 
 
-async def is_owner(client, chat_id: int, user_id: int) -> bool:
-    try:
-        member = await client.get_chat_member(chat_id, user_id)
-        return member.status == ChatMemberStatus.OWNER
-    except:
-        return False
+async def extract_target_and_title(client: Client, message: Message):
+    target = None
+    title = None
 
-
-async def extract_target_user(client, message):
+    # Reply case
     if message.reply_to_message:
-        return message.reply_to_message.from_user
+        target = message.reply_to_message.from_user
+        if len(message.command) > 1:
+            title = " ".join(message.command[1:])
 
-    if len(message.command) < 2:
-        return None
+    # Username / UserID case
+    elif len(message.command) > 1:
+        try:
+            target = await client.get_users(message.command[1])
+        except Exception:
+            return None, None
 
-    arg = message.command[1]
-    try:
-        if arg.startswith("@"):
-            return await client.get_users(arg)
-        if arg.isdigit():
-            return await client.get_users(int(arg))
-    except:
-        return None
-    return None
+        if len(message.command) > 2:
+            title = " ".join(message.command[2:])
 
-
-async def auto_demote(client, chat_id, user_id):
-    no_privileges = ChatPrivileges(
-        can_manage_chat=False,
-        can_delete_messages=False,
-        can_manage_video_chats=False,
-        can_restrict_members=False,
-        can_promote_members=False,
-        can_change_info=False,
-        can_invite_users=False,
-        can_pin_messages=False,
-        is_anonymous=False
-    )
-    await client.promote_chat_member(chat_id, user_id, no_privileges)
+    return target, title
 
 
-# ==========================================================
-# MONGO HELPERS (UNCHANGED)
-# ==========================================================
+@Client.on_message(filters.command("promote") & filters.group)
+async def promote_handler(client: Client, message: Message):
 
-async def get_abuse_history(chat_id: int, admin_id: int):
-    data = await db.admin_abuse.find_one(
-        {"chat_id": chat_id, "admin_id": admin_id}
-    )
-    return data["timestamps"] if data else []
+    if not message.from_user:
+        return
 
+    issuer = await client.get_chat_member(message.chat.id, message.from_user.id)
+    if issuer.status not in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]:
+        return
 
-async def save_abuse_history(chat_id: int, admin_id: int, timestamps: list):
-    await db.admin_abuse.update_one(
-        {"chat_id": chat_id, "admin_id": admin_id},
-        {"$set": {"timestamps": timestamps}},
-        upsert=True
-    )
+    target, title = await extract_target_and_title(client, message)
+    if not target:
+        return await message.reply(ERROR_TEXT)
 
-# ==========================================================
-# COMMANDS
-# ==========================================================
+    target_member = await client.get_chat_member(message.chat.id, target.id)
 
-@nand.on_message(filters.group & filters.command("kick"))
-async def kick_user(client, message: Message):
-    if not await is_power(client, message.chat.id, message.from_user.id):
-        return await message.reply_text("❌ Only admin can use this command.")
-
-    admin_id = message.from_user.id
-    chat_id = message.chat.id
-    now = int(time.time())
-
-    owner = await is_owner(client, chat_id, admin_id)
-
-    if not owner:
-        history = await get_abuse_history(chat_id, admin_id)
-        history = [t for t in history if now - t < ABUSE_TIME_WINDOW]
-
-        if len(history) >= ABUSE_LIMIT:
-            await auto_demote(client, chat_id, admin_id)
-            return await message.reply_text(
-                "🚨 **Abuse detected!**\n"
-                "Ban/Kick limit exceeded.\n"
-                "🔻 You have been auto-demoted."
-            )
-    else:
-        history = None  # owner immunity
-
-    user = await extract_target_user(client, message)
-    if not user:
-        return await message.reply_text("⚠️ Usage: Reply or use `/kick @username`")
-
-    me = await client.get_chat_member(chat_id, client.me.id)
-    if not me.privileges.can_restrict_members:
-        return await message.reply_text("❌ I don't have permission to restrict members.")
+    # AUTO-DETECT OWNER IMMUNITY
+    if target_member.status == ChatMemberStatus.OWNER:
+        return await message.reply("👑 Group owner ko promote ya demote nahi kiya ja sakta.")
 
     try:
-        await client.ban_chat_member(chat_id, user.id)
-        await client.unban_chat_member(chat_id, user.id)
-
-        if not owner:
-            history.append(now)
-            await save_abuse_history(chat_id, admin_id, history)
-
-        await message.reply_text(
-            f"👢 {user.mention} has been kicked."
+        await client.promote_chat_member(
+            chat_id=message.chat.id,
+            user_id=target.id,
+            can_manage_chat=True,
+            can_delete_messages=True,
+            can_restrict_members=True,
+            can_invite_users=True,
+            can_pin_messages=True,
+            can_manage_video_chats=True
         )
+
+        if title:
+            try:
+                await client.set_administrator_title(
+                    chat_id=message.chat.id,
+                    user_id=target.id,
+                    title=title[:16]
+                )
+            except Exception:
+                pass
+
+        await message.reply(f"✅ {target.mention} promoted successfully.")
+
     except Exception as e:
-        await message.reply_text(f"❌ Failed to kick: {e}")
+        await message.reply(f"❌ Error:\n`{e}`")
 
 
-@nand.on_message(filters.group & filters.command("ban"))
-async def ban_user(client, message: Message):
-    if not await is_power(client, message.chat.id, message.from_user.id):
-        return await message.reply_text("❌ Only admin can use this command.")
+@Client.on_message(filters.command("demote") & filters.group)
+async def demote_handler(client: Client, message: Message):
 
-    admin_id = message.from_user.id
-    chat_id = message.chat.id
-    now = int(time.time())
+    if not message.from_user:
+        return
 
-    owner = await is_owner(client, chat_id, admin_id)
+    issuer = await client.get_chat_member(message.chat.id, message.from_user.id)
+    if issuer.status not in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]:
+        return
 
-    if not owner:
-        history = await get_abuse_history(chat_id, admin_id)
-        history = [t for t in history if now - t < ABUSE_TIME_WINDOW]
+    target, _ = await extract_target_and_title(client, message)
+    if not target:
+        return await message.reply(ERROR_TEXT)
 
-        if len(history) >= ABUSE_LIMIT:
-            await auto_demote(client, chat_id, admin_id)
-            return await message.reply_text(
-                "🚨 **Abuse detected!**\n"
-                "Ban/Kick limit exceeded.\n"
-                "🔻 You have been auto-demoted."
-            )
-    else:
-        history = None  # owner immunity
+    target_member = await client.get_chat_member(message.chat.id, target.id)
 
-    user = await extract_target_user(client, message)
-    if not user:
-        return await message.reply_text("⚠️ Usage: Reply or use `/ban @username`")
+    # AUTO-DETECT OWNER IMMUNITY
+    if target_member.status == ChatMemberStatus.OWNER:
+        return await message.reply("👑 Group owner ko promote ya demote nahi kiya ja sakta.")
 
     try:
-        await client.ban_chat_member(chat_id, user.id)
-
-        if not owner:
-            history.append(now)
-            await save_abuse_history(chat_id, admin_id, history)
-
-        await message.reply_text(
-            f"🚨 {user.mention} has been banned."
+        await client.promote_chat_member(
+            chat_id=message.chat.id,
+            user_id=target.id,
+            can_manage_chat=False,
+            can_delete_messages=False,
+            can_restrict_members=False,
+            can_invite_users=False,
+            can_pin_messages=False,
+            can_manage_video_chats=False
         )
+
+        await message.reply(f"✅ {target.mention} demoted successfully.")
+
     except Exception as e:
-        await message.reply_text(f"❌ Failed to ban: {e}")
+        await message.reply(f"❌ Error:\n`{e}`")
