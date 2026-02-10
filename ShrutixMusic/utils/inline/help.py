@@ -2,7 +2,7 @@ from typing import Union
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from ShrutixMusic import nand
-from config import SUPPORT_CHAT, START_IMG_URL
+from config import SUPPORT_CHAT
 
 # --- 1. MAIN MENU (Vertical Buttons + Back) ---
 def private_help_panel(_):
@@ -21,12 +21,18 @@ def private_help_panel(_):
         ],
         [
             InlineKeyboardButton(
-                text=_["BACK_BUTTON"], # Yahan ab 'Back' likha aayega
-                callback_data="close"  # Kaam Close ka karega (kyunki isse peeche kuch nahi hai)
+                text=_["BACK_BUTTON"], # Yahan "Back" likha aayega
+                callback_data="close"  # Action Close ka hoga
             )
         ],
     ]
     return buttons
+
+# --- RESTORED FUNCTION: help_pannel ---
+# Ye function missing tha isliye error aaya.
+# Hum isko private_help_panel se link kar denge.
+def help_pannel(_, update):
+    return private_help_panel(_)
 
 # --- 2. BACK BUTTON FOR SUB-MENUS ---
 def help_back_markup(_):
@@ -83,4 +89,5 @@ def security_back_markup(_):
             ]
         ]
     )
-    
+
+
