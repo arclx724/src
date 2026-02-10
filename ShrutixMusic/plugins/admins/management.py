@@ -31,7 +31,7 @@ async def is_power(client, chat_id: int, user_id: int) -> bool:
         return False
 
 async def get_owner(client, chat_id: int) -> int:
-    """Get chat owner id (Fixed for Pyrogram V2)"""
+    """Get chat owner id"""
     async for member in client.get_chat_members(chat_id, filter=ChatMembersFilter.ADMINISTRATORS):
         if member.status == ChatMemberStatus.OWNER:
             return member.user.id
@@ -176,7 +176,7 @@ async def unmute_user(client, message: Message):
         await message.reply_text(f"❌ Failed to unmute: {e}")
 
 # ==========================================================
-# PROMOTE / DEMOTE
+# PROMOTE (With Title)
 # ==========================================================
 
 @nand.on_message(filters.group & filters.command(["promote"]))
@@ -185,6 +185,7 @@ async def promote_handler(client, message: Message):
     if not user:
         return await message.reply_text("Specify a user to promote.")
     
+    # Title Handle: /promote @user MyTitle
     title = " ".join(message.command[2:]) if len(message.command) > 2 else None
 
     # Get Bot's Own Permissions
@@ -199,10 +200,10 @@ async def promote_handler(client, message: Message):
     if user.id == owner_id:
         return await message.reply_text("⚠️ User is already owner.")
 
-    # ERROR FIX: Only give rights that the BOT actually has
     bot_rights = me.privileges
     
     try:
+        # Give available rights
         await client.promote_chat_member(
             message.chat.id,
             user.id,
@@ -212,7 +213,7 @@ async def promote_handler(client, message: Message):
                 can_invite_users=bot_rights.can_invite_users,
                 can_restrict_members=bot_rights.can_restrict_members,
                 can_pin_messages=bot_rights.can_pin_messages,
-                can_promote_members=False, # Standard safety
+                can_promote_members=False,
                 can_manage_video_chats=bot_rights.can_manage_video_chats,
                 can_manage_topics=bot_rights.can_manage_topics,
                 can_post_stories=bot_rights.can_post_stories,
@@ -221,6 +222,7 @@ async def promote_handler(client, message: Message):
                 is_anonymous=False
             )
         )
+        # Set Title if given
         if title:
             await client.set_administrator_title(message.chat.id, user.id, title)
             
@@ -228,6 +230,10 @@ async def promote_handler(client, message: Message):
     except Exception as e:
         await message.reply_text(f"❌ Failed to promote: {e}")
 
+
+# ==========================================================
+# DEMOTE (Soft Demote - No Kick)
+# ==========================================================
 
 @nand.on_message(filters.group & filters.command("demote"))
 async def demote_user(client: Client, message: Message):
@@ -252,15 +258,36 @@ async def demote_user(client: Client, message: Message):
         return await message.reply_text("❌ You cannot demote yourself.")
 
     try:
-        # HERE IS THE MAGIC FIX: Ban then Unban to fully remove from admin list
-        await client.ban_chat_member(message.chat.id, user.id)
-        await client.unban_chat_member(message.chat.id, user.id)
+        # 1. Clear Admin Title
+        try:
+            await client.set_administrator_title(message.chat.id, user.id, "")
+        except:
+            pass
+
+        # 2. Remove ALL Rights (Soft Demote - NO BAN)
+        await client.promote_chat_member(
+            message.chat.id,
+            user.id,
+            privileges=ChatPrivileges(
+                can_change_info=False,
+                can_post_messages=False,
+                can_edit_messages=False,
+                can_delete_messages=False,
+                can_invite_users=False,
+                can_restrict_members=False,
+                can_pin_messages=False,
+                can_promote_members=False,
+                can_manage_video_chats=False,
+                can_manage_topics=False,
+                can_post_stories=False,
+                can_edit_stories=False,
+                can_delete_stories=False,
+                is_anonymous=False
+            )
+        )
         
-        await message.reply_text(f"✅ {user.mention} has been demoted from admin.")
+        await message.reply_text(f"✅ {user.mention} has been demoted to a normal member.")
 
     except Exception as e:
-        if "CHAT_ADMIN_REQUIRED" in str(e):
-            await message.reply_text("❌ Bot must be admin with 'Ban Users' permission to demote.")
-        else:
-            await message.reply_text(f"⚠️ Failed to demote: {e}")
-            
+        await message.reply_text(f"⚠️ Failed to demote: {e}")
+                          
