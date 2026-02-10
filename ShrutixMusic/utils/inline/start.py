@@ -30,7 +30,9 @@ def private_panel(_):
             InlineKeyboardButton(text=_["S_B_2"], url=config.SUPPORT_CHAT),
         ],
         [
-            InlineKeyboardButton(text=_["S_B_5"], user_id=config.OWNER_ID),
+            # FIX: user_id hata kar direct link lagaya hai taaki privacy error na aaye.
+            # Agar username 'NoxxOP' nahi hai, toh ise change kar lein.
+            InlineKeyboardButton(text=_["S_B_5"], url="https://t.me/SlayWithRose"),
         ],
     ]
     return buttons
