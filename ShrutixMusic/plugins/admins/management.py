@@ -1,212 +1,239 @@
 import time
+import asyncio
 from pyrogram import filters
+from pyrogram.types import Message, ChatPermissions, ChatPrivileges
 from pyrogram.enums import ChatMemberStatus
-from pyrogram.types import ChatPermissions
-from pyrogram.types import Message, ChatPrivileges
 from ShrutixMusic import nand
-from ShrutixMusic.core.mongo import db
+from ShrutixMusic.core.mongo import mongodb
 
-# ---------------- CONFIG ---------------- #
-
-BAN_LIMIT = 5
+# ==========================================================
+# CONFIG
+# ==========================================================
+BAN_LIMIT = 10
 KICK_LIMIT = 10
-RESET_TIME = 86400  # 24 hours
+TIME_WINDOW = 24 * 60 * 60  # 24 hours in seconds
 
-limits = db.admin_limits
+# MongoDB collections
+limits_db = mongodb.admin_limits
+warns_db = mongodb.warns
 
-ERROR_TEXT = "I don't know who you're talking about, you're going to need to specify a user...!"
+# ==========================================================
+# HELPER FUNCTIONS
+# ==========================================================
 
-
-# ---------------- HELPERS ---------------- #
-
-async def is_admin(client, chat_id, user_id):
-    member = await client.get_chat_member(chat_id, user_id)
-    return member.status in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER)
-
-
-async def extract_target(client, message: Message):
-    if message.reply_to_message:
-        return message.reply_to_message.from_user
-    if len(message.command) > 1:
-        try:
-            return await client.get_users(message.command[1])
-        except:
-            return None
-    return None
-
-
-async def check_limit(user_id: int, key: str, limit: int):
-    now = int(time.time())
-    data = await limits.find_one({"user_id": user_id})
-
-    if not data or data["reset_at"] < now:
-        await limits.update_one(
-            {"user_id": user_id},
-            {"$set": {"ban": 0, "kick": 0, "reset_at": now + RESET_TIME}},
-            upsert=True
-        )
-        data = {"ban": 0, "kick": 0}
-
-    if data[key] >= limit:
+async def is_power(client, chat_id: int, user_id: int) -> bool:
+    """Check if user is admin or owner"""
+    try:
+        member = await client.get_chat_member(chat_id, user_id)
+        return member.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]
+    except:
         return False
 
-    await limits.update_one(
-        {"user_id": user_id},
-        {"$inc": {key: 1}}
+async def extract_target_user(client, message: Message):
+    """Get target user from reply, username, or id"""
+    if message.reply_to_message:
+        return message.reply_to_message.from_user
+
+    if len(message.command) < 2:
+        return None
+
+    arg = message.command[1]
+    try:
+        if arg.startswith("@"):
+            return await client.get_users(arg)
+        if arg.isdigit():
+            return await client.get_users(int(arg))
+    except Exception:
+        return None
+    return None
+
+async def get_admin_limit(chat_id, user_id, action):
+    """Fetch Mongo-based limit count, auto-reset if TIME_WINDOW passed"""
+    doc = await limits_db.find_one({"chat_id": chat_id, "user_id": user_id})
+    now = int(time.time())
+    if not doc:
+        return 0
+    last = doc.get("last_update", now)
+    if now - last > TIME_WINDOW:
+        # Reset after 24h
+        await limits_db.update_one(
+            {"chat_id": chat_id, "user_id": user_id},
+            {"$set": {"ban": 0, "kick": 0, "last_update": now}},
+            upsert=True
+        )
+        return 0
+    return doc.get(action, 0)
+
+async def add_admin_limit(chat_id, user_id, action):
+    """Increment admin action counter"""
+    current = await get_admin_limit(chat_id, user_id, action)
+    current += 1
+    await limits_db.update_one(
+        {"chat_id": chat_id, "user_id": user_id},
+        {"$set": {action: current, "last_update": int(time.time())}},
+        upsert=True
     )
-    return True
+    return current
 
+# ==========================================================
+# BAN & KICK
+# ==========================================================
 
-# ---------------- PROMOTE / DEMOTE ---------------- #
+@nand.on_message(filters.group & filters.command("ban"))
+async def ban_user(client, message: Message):
+    if not await is_power(client, message.chat.id, message.from_user.id):
+        return await message.reply_text("❌ Only admin can use this command.")
 
-@nand.on_message(filters.command("promote") & filters.group)
-async def promote(client, message: Message):
-    if not await is_admin(client, message.chat.id, message.from_user.id):
-        return
+    user = await extract_target_user(client, message)
+    if not user:
+        return await message.reply_text("❌ Specify a user to ban!")
 
-    target = await extract_target(client, message)
-    if not target:
-        return await message.reply(ERROR_TEXT)
+    count = await add_admin_limit(message.chat.id, message.from_user.id, "ban")
+    if count > BAN_LIMIT:
+        return await message.reply_text("⛔ Ban limit reached for 24 hours!")
+
+    try:
+        await client.ban_chat_member(message.chat.id, user.id)
+        await message.reply_text(f"🚨 {user.mention} has been banned.\nRemaining: `{BAN_LIMIT - count}`")
+    except Exception as e:
+        await message.reply_text(f"❌ Failed to ban: {e}")
+
+@nand.on_message(filters.group & filters.command("kick"))
+async def kick_user(client, message: Message):
+    if not await is_power(client, message.chat.id, message.from_user.id):
+        return await message.reply_text("❌ Only admin can use this command.")
+
+    user = await extract_target_user(client, message)
+    if not user:
+        return await message.reply_text("❌ Specify a user to kick!")
+
+    count = await add_admin_limit(message.chat.id, message.from_user.id, "kick")
+    if count > KICK_LIMIT:
+        return await message.reply_text("⛔ Kick limit reached for 24 hours!")
+
+    try:
+        await client.ban_chat_member(message.chat.id, user.id)
+        await client.unban_chat_member(message.chat.id, user.id)
+        await message.reply_text(f"👢 {user.mention} has been kicked.\nRemaining: `{KICK_LIMIT - count}`")
+    except Exception as e:
+        await message.reply_text(f"❌ Failed to kick: {e}")
+
+# ==========================================================
+# MUTE & UNMUTE
+# ==========================================================
+
+@nand.on_message(filters.group & filters.command("mute"))
+async def mute_user(client, message: Message):
+    if not await is_power(client, message.chat.id, message.from_user.id):
+        return await message.reply_text("❌ Only admin can use this command.")
+
+    user = await extract_target_user(client, message)
+    if not user:
+        return await message.reply_text("❌ Specify a user to mute!")
+
+    try:
+        await client.restrict_chat_member(
+            message.chat.id,
+            user.id,
+            permissions=ChatPermissions(can_send_messages=False)
+        )
+        await message.reply_text(f"🔇 {user.mention} has been muted.")
+    except Exception as e:
+        await message.reply_text(f"❌ Failed to mute: {e}")
+
+@nand.on_message(filters.group & filters.command("unmute"))
+async def unmute_user(client, message: Message):
+    if not await is_power(client, message.chat.id, message.from_user.id):
+        return await message.reply_text("❌ Only admin can use this command.")
+
+    user = await extract_target_user(client, message)
+    if not user:
+        return await message.reply_text("❌ Specify a user to unmute!")
+
+    try:
+        await client.restrict_chat_member(
+            message.chat.id,
+            user.id,
+            permissions=ChatPermissions(
+                can_send_messages=True,
+                can_send_media_messages=True,
+                can_send_other_messages=True,
+                can_add_web_page_previews=True
+            )
+        )
+        await message.reply_text(f"🔊 {user.mention} has been unmuted.")
+    except Exception as e:
+        await message.reply_text(f"❌ Failed to unmute: {e}")
+
+# ==========================================================
+# PROMOTE & DEMOTE
+# ==========================================================
+
+@nand.on_message(filters.group & filters.command("promote"))
+async def promote_handler(client, message: Message):
+    if not await is_power(client, message.chat.id, message.from_user.id):
+        return await message.reply_text("❌ Only admin can use this command.")
+
+    user = await extract_target_user(client, message)
+    if not user:
+        return await message.reply_text("❌ Specify a user to promote!")
 
     privileges = ChatPrivileges(
         can_change_info=True,
         can_delete_messages=True,
         can_invite_users=True,
-        can_restrict_members=True,
         can_pin_messages=True,
-        can_promote_members=False
+        can_promote_members=True
     )
 
-    await client.promote_chat_member(message.chat.id, target.id, privileges)
-    await message.reply(f"✅ {target.mention} promoted.")
+    try:
+        await client.promote_chat_member(message.chat.id, user.id, privileges)
+        await message.reply_text(f"✅ {user.mention} has been promoted to admin.")
+    except Exception as e:
+        await message.reply_text(f"❌ Failed to promote: {e}")
 
+@nand.on_message(filters.group & filters.command("demote"))
+async def demote_handler(client, message: Message):
+    if not await is_power(client, message.chat.id, message.from_user.id):
+        return await message.reply_text("❌ Only admin can use this command.")
 
-@nand.on_message(filters.command("demote") & filters.group)
-async def demote(client, message: Message):
-    if not await is_admin(client, message.chat.id, message.from_user.id):
-        return
+    user = await extract_target_user(client, message)
+    if not user:
+        return await message.reply_text("❌ Specify a user to demote!")
 
-    target = await extract_target(client, message)
-    if not target:
-        return await message.reply(ERROR_TEXT)
-
-    privileges = ChatPrivileges(
+    no_privileges = ChatPrivileges(
         can_change_info=False,
         can_delete_messages=False,
         can_invite_users=False,
-        can_restrict_members=False,
         can_pin_messages=False,
         can_promote_members=False
     )
 
-    await client.promote_chat_member(message.chat.id, target.id, privileges)
-    await message.reply(f"✅ {target.mention} demoted.")
+    try:
+        await client.promote_chat_member(message.chat.id, user.id, no_privileges)
+        await message.reply_text(f"✅ {user.mention} has been demoted.")
+    except Exception as e:
+        await message.reply_text(f"❌ Failed to demote: {e}")
 
+# ==========================================================
+# ADMIN TITLE
+# ==========================================================
 
-# ---------------- ADMIN TITLE ---------------- #
+@nand.on_message(filters.group & filters.command("settitle"))
+async def set_admin_title(client, message: Message):
+    if not await is_power(client, message.chat.id, message.from_user.id):
+        return await message.reply_text("❌ Only admin can use this command.")
 
-@nand.on_message(filters.command("title") & filters.group)
-async def title(client, message: Message):
-    if not await is_admin(client, message.chat.id, message.from_user.id):
-        return
+    user = await extract_target_user(client, message)
+    if not user:
+        return await message.reply_text("❌ Specify a user to set title!")
 
-    if not message.reply_to_message or len(message.command) < 2:
-        return await message.reply("Reply to an admin with `/title text`")
+    if len(message.command) < 3:
+        return await message.reply_text("❌ Usage: /settitle @user NewTitle")
 
-    title = " ".join(message.command[1:])[:16]
-
-    await client.set_administrator_title(
-        message.chat.id,
-        message.reply_to_message.from_user.id,
-        title
-    )
-    await message.reply("✅ Admin title updated.")
-
-
-# ---------------- BAN / UNBAN ---------------- #
-
-@nand.on_message(filters.command("ban") & filters.group)
-async def ban(client, message: Message):
-    if not await is_admin(client, message.chat.id, message.from_user.id):
-        return
-
-    allowed = await check_limit(message.from_user.id, "ban", BAN_LIMIT)
-    if not allowed:
-        return await message.reply("❌ Ban limit reached (5 per 24h).")
-
-    target = await extract_target(client, message)
-    if not target:
-        return await message.reply(ERROR_TEXT)
-
-    await client.ban_chat_member(message.chat.id, target.id)
-    await message.reply(f"🚫 {target.mention} banned.")
-
-
-@nand.on_message(filters.command("unban") & filters.group)
-async def unban(client, message: Message):
-    if not await is_admin(client, message.chat.id, message.from_user.id):
-        return
-
-    target = await extract_target(client, message)
-    if not target:
-        return await message.reply(ERROR_TEXT)
-
-    await client.unban_chat_member(message.chat.id, target.id)
-    await message.reply(f"✅ {target.mention} unbanned.")
-
-
-# ---------------- KICK ---------------- #
-
-@nand.on_message(filters.command("kick") & filters.group)
-async def kick(client, message: Message):
-    if not await is_admin(client, message.chat.id, message.from_user.id):
-        return
-
-    allowed = await check_limit(message.from_user.id, "kick", KICK_LIMIT)
-    if not allowed:
-        return await message.reply("❌ Kick limit reached (10 per 24h).")
-
-    target = await extract_target(client, message)
-    if not target:
-        return await message.reply(ERROR_TEXT)
-
-    await client.ban_chat_member(message.chat.id, target.id)
-    await client.unban_chat_member(message.chat.id, target.id)
-    await message.reply(f"👢 {target.mention} kicked.")
-
-
-# ---------------- MUTE / UNMUTE ---------------- #
-
-@nand.on_message(filters.command("mute") & filters.group)
-async def mute(client, message: Message):
-    if not await is_admin(client, message.chat.id, message.from_user.id):
-        return
-
-    target = await extract_target(client, message)
-    if not target:
-        return await message.reply(ERROR_TEXT)
-
-    await client.restrict_chat_member(message.chat.id, target.id, ChatPermissions())
-    await message.reply(f"🔇 {target.mention} muted.")
-
-
-@nand.on_message(filters.command("unmute") & filters.group)
-async def unmute(client, message: Message):
-    if not await is_admin(client, message.chat.id, message.from_user.id):
-        return
-
-    target = await extract_target(client, message)
-    if not target:
-        return await message.reply(ERROR_TEXT)
-
-    await client.restrict_chat_member(
-        message.chat.id,
-        target.id,
-        ChatPermissions(
-            can_send_messages=True,
-            can_send_media_messages=True,
-            can_send_other_messages=True,
-            can_add_web_page_previews=True
-        )
-    )
-    await message.reply(f"🔊 {target.mention} unmuted.")
+    new_title = " ".join(message.command[2:])
+    try:
+        await client.set_administrator_title(message.chat.id, user.id, new_title)
+        await message.reply_text(f"✅ {user.mention} title set to '{new_title}'.")
+    except Exception as e:
+        await message.reply_text(f"❌ Failed to set title: {e}")
