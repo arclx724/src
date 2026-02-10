@@ -1,71 +1,75 @@
 from typing import Union
 from pyrogram import filters, types
-from pyrogram.types import InlineKeyboardMarkup, Message, InlineKeyboardButton
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from ShrutixMusic import nand
 from ShrutixMusic.utils.database import get_lang
 from ShrutixMusic.utils.decorators.language import LanguageStart, languageCB
 from ShrutixMusic.utils.inline.help import (
     private_help_panel,
-    help_back_markup, 
+    help_back_markup,
     security_help_panel,
     security_back_markup
 )
-from config import BANNED_USERS, SUPPORT_CHAT
+from config import BANNED_USERS
 from strings import get_string, helpers
 
-# --- 1. MAIN HELP COMMAND (Shows 2 Buttons) ---
+# ======================================================
+# 1. MAIN HELP COMMAND (Shows 2 Buttons)
+# ======================================================
 @nand.on_message(filters.command(["help"]) & filters.private & ~BANNED_USERS)
 @nand.on_callback_query(filters.regex("settings_back_helper") & ~BANNED_USERS)
 @LanguageStart
 async def helper_private(client, update: Union[types.Message, types.CallbackQuery], _):
+    # Check if it's a Callback (Button Click) or Message (Command)
     is_callback = isinstance(update, types.CallbackQuery)
+    
     if is_callback:
         try:
             await update.answer()
         except:
             pass
-        chat_id = update.message.chat.id
-        language = await get_lang(chat_id)
-        _ = get_string(language)
         
-        # Show 2 Buttons
+        # Load the 2 Buttons Panel
         keyboard = InlineKeyboardMarkup(private_help_panel(_))
         
         await update.edit_message_text(
-            _["help_2"], reply_markup=keyboard
+            _["help_2"], # "Choose category" text from string file
+            reply_markup=keyboard
         )
     else:
+        # Delete the /help command
         try:
             await update.delete()
         except:
             pass
-        language = await get_lang(update.chat.id)
-        _ = get_string(language)
-        
-        # Show 2 Buttons
+            
+        # Load the 2 Buttons Panel
         keyboard = InlineKeyboardMarkup(private_help_panel(_))
         
         await update.reply_text(
-            _["help_2"], reply_markup=keyboard
+            _["help_2"], 
+            reply_markup=keyboard
         )
 
-
-# --- 2. MUSIC DOMAIN (Clicked "Music Management") ---
+# ======================================================
+# 2. MUSIC MANAGEMENT CLICKED
+# ======================================================
 @nand.on_callback_query(filters.regex("help_domain_music") & ~BANNED_USERS)
 @languageCB
 async def help_music_domain(client, CallbackQuery, _):
-    # Dynamic Grid Generator for Music Modules
+    # Generate Grid for Music Modules (Admin, Play, etc.)
     keyboard = []
     temp = []
     for count, key in enumerate(helpers):
         if count % 3 == 0 and count > 0:
             keyboard.append(temp)
             temp = []
+        # Creates buttons for: Admin, Auth, Play, etc.
         temp.append(InlineKeyboardButton(text=key.title(), callback_data=f"help_callback {key}"))
     keyboard.append(temp)
     
-    # Back button goes to "settings_back_helper" (The 2 buttons menu)
+    # Add Back Button (Goes back to the 2 Main Buttons)
     keyboard.append([InlineKeyboardButton(text=_["BACK_BUTTON"], callback_data="settings_back_helper")])
     
     await CallbackQuery.edit_message_text(
@@ -73,23 +77,28 @@ async def help_music_domain(client, CallbackQuery, _):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
-
-# --- 3. SECURITY DOMAIN (Clicked "Group Management") ---
+# ======================================================
+# 3. GROUP MANAGEMENT CLICKED
+# ======================================================
 @nand.on_callback_query(filters.regex("help_domain_security") & ~BANNED_USERS)
 @languageCB
 async def help_security_domain(client, CallbackQuery, _):
+    # Shows Anti-Nuke, Anti-Bot buttons
     await CallbackQuery.edit_message_text(
         "🛡️ **Group Management Commands**\n\nChoose a category below:",
         reply_markup=InlineKeyboardMarkup(security_help_panel(_))
     )
 
-
-# --- 4. HANDLE MUSIC MODULES TEXT (Admin, Play, etc.) ---
+# ======================================================
+# 4. HANDLE MUSIC SUB-MODULES (e.g., Clicking "Play")
+# ======================================================
 @nand.on_callback_query(filters.regex(r"help_callback") & ~BANNED_USERS)
 @languageCB
 async def helper_cb(client, CallbackQuery, _):
     callback_data = CallbackQuery.data.strip()
     cb = callback_data.split(None, 1)[1]
+    
+    # Back button goes back to Music Grid
     keyboard = help_back_markup(_)
     
     if cb in helpers:
@@ -99,15 +108,18 @@ async def helper_cb(client, CallbackQuery, _):
     else:
         await CallbackQuery.answer(_["help_7"], show_alert=True)
 
-
-# --- 5. HANDLE SECURITY MODULES TEXT (AntiNuke, etc.) ---
+# ======================================================
+# 5. HANDLE SECURITY SUB-MODULES (e.g., Clicking "Anti-Nuke")
+# ======================================================
 @nand.on_callback_query(filters.regex(r"help_cmd_") & ~BANNED_USERS)
 @languageCB
 async def security_helper_cb(client, CallbackQuery, _):
     cmd = CallbackQuery.data.split("_")[2]
+    
+    # Back button goes back to Group Management Grid
     keyboard = security_back_markup(_)
+    
     text = ""
-
     if cmd == "antinuke":
         text = (
             "☢️ **Anti-Nuke System**\n\n"
