@@ -1,7 +1,7 @@
 from typing import Union
 from pyrogram import filters, types
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-import types as py_types  # Fix for module check
+import types as py_types
 
 from ShrutixMusic import nand
 from ShrutixMusic.utils.database import get_lang
@@ -14,6 +14,28 @@ from ShrutixMusic.utils.inline.help import (
 )
 from config import BANNED_USERS
 from strings import get_string, helpers
+
+# --- HELPER FUNCTION TO FIND DATA ---
+def get_help_dict(helpers_obj):
+    # Agar helpers ek Module (File) hai
+    if isinstance(helpers_obj, py_types.ModuleType):
+        # 1. Try finding 'helpers' dict inside the module
+        if hasattr(helpers_obj, "helpers") and isinstance(helpers_obj.helpers, dict):
+            return helpers_obj.helpers
+        # 2. Try finding 'HELPERS' dict inside the module
+        elif hasattr(helpers_obj, "HELPERS") and isinstance(helpers_obj.HELPERS, dict):
+            return helpers_obj.HELPERS
+        # 3. Fallback: Search for ANY dictionary inside the module
+        else:
+            for name, val in vars(helpers_obj).items():
+                if not name.startswith("_") and isinstance(val, dict) and len(val) > 0:
+                    return val
+            return {} # Kuch nahi mila
+    # Agar already Dictionary hai
+    elif isinstance(helpers_obj, dict):
+        return helpers_obj
+    else:
+        return {}
 
 # ======================================================
 # 1. MAIN HELP COMMAND (Shows 2 Buttons)
@@ -38,33 +60,28 @@ async def helper_private(client, update: Union[types.Message, types.CallbackQuer
         except:
             pass
         keyboard = InlineKeyboardMarkup(private_help_panel(_))
-        await update.reply_text(
-            _["help_2"], reply_markup=keyboard
+        await update.reply_photo(
+            photo=config.START_IMG_URL,
+            caption=_["help_2"],
+            reply_markup=keyboard
         )
 
 # ======================================================
-# 2. MUSIC MANAGEMENT CLICKED (Fix Applied Here)
+# 2. MUSIC MANAGEMENT CLICKED (Auto-Fix Logic Here)
 # ======================================================
 @nand.on_callback_query(filters.regex("help_domain_music") & ~BANNED_USERS)
 @languageCB
 async def help_music_domain(client, CallbackQuery, _):
-    # --- FIX START: Handle Module vs Dict conflict ---
     global helpers
-    # Agar helpers ek Module (File) hai, toh uske andar se Dictionary nikalo
-    if isinstance(helpers, py_types.ModuleType):
-        if hasattr(helpers, "HELPERS"):
-            help_dict = helpers.HELPERS
-        else:
-            # Fallback: Agar HELPERS naam nahi mila, toh dir() check karke assume karo
-            help_dict = {}
-    else:
-        # Agar already Dictionary hai
-        help_dict = helpers
-    # --- FIX END ---
+    # Use the smart finder function
+    help_dict = get_help_dict(helpers)
+    
+    # Debug: Agar abhi bhi empty hai toh log mein pata chalega
+    if not help_dict:
+        print("[DEBUG] helpers dictionary is empty! Check strings/__init__.py")
 
     keyboard = []
     temp = []
-    # Ab hum 'help_dict' use karenge instead of 'helpers'
     for count, key in enumerate(help_dict):
         if count % 3 == 0 and count > 0:
             keyboard.append(temp)
@@ -96,16 +113,8 @@ async def help_security_domain(client, CallbackQuery, _):
 @nand.on_callback_query(filters.regex(r"help_callback") & ~BANNED_USERS)
 @languageCB
 async def helper_cb(client, CallbackQuery, _):
-    # --- FIX START ---
     global helpers
-    if isinstance(helpers, py_types.ModuleType):
-        if hasattr(helpers, "HELPERS"):
-            help_dict = helpers.HELPERS
-        else:
-            help_dict = {}
-    else:
-        help_dict = helpers
-    # --- FIX END ---
+    help_dict = get_help_dict(helpers)
 
     callback_data = CallbackQuery.data.strip()
     cb = callback_data.split(None, 1)[1]
