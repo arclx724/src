@@ -1,112 +1,89 @@
-from typing import Union
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from pyrogram.types import InlineKeyboardButton
-
-
-def setting_markup(_):
+def audio_quality_markup(_, current):
     buttons = [
         [
-            InlineKeyboardButton(text=_["ST_B_1"], callback_data="AU"),
-            InlineKeyboardButton(text=_["ST_B_3"], callback_data="LG"),
+            InlineKeyboardButton(
+                text=_["ST_B_1"], callback_data="AQ|High"
+            ),
+            InlineKeyboardButton(
+                text=_["ST_B_2"], callback_data="AQ|Medium"
+            ),
+            InlineKeyboardButton(
+                text=_["ST_B_3"], callback_data="AQ|Low"
+            ),
         ],
         [
-            InlineKeyboardButton(text=_["ST_B_2"], callback_data="PM"),
-        ],
-        [
-            InlineKeyboardButton(text=_["ST_B_4"], callback_data="VM"),
-        ],
-        [
-            InlineKeyboardButton(text=_["CLOSE_BUTTON"], callback_data="close"),
+            InlineKeyboardButton(
+                text=_["BACK_BUTTON"], callback_data="settings_helper"
+            ),
+            InlineKeyboardButton(
+                text=_["CLOSE_BUTTON"], callback_data="close"
+            ),
         ],
     ]
     return buttons
 
-
-def vote_mode_markup(_, current, mode: Union[bool, str] = None):
+def cleanmode_settings_markup(_, status):
     buttons = [
         [
-            InlineKeyboardButton(text="Vᴏᴛɪɴɢ ᴍᴏᴅᴇ ➜", callback_data="VOTEANSWER"),
             InlineKeyboardButton(
-                text=_["ST_B_5"] if mode == True else _["ST_B_6"],
-                callback_data="VOMODECHANGE",
+                text=_["ST_B_4"], callback_data="CM|True"
+            ),
+            InlineKeyboardButton(
+                text=_["ST_B_5"], callback_data="CM|False"
             ),
         ],
         [
-            InlineKeyboardButton(text="-2", callback_data="FERRARIUDTI M"),
             InlineKeyboardButton(
-                text=f"ᴄᴜʀʀᴇɴᴛ : {current}",
-                callback_data="ANSWERVOMODE",
+                text=_["BACK_BUTTON"], callback_data="settings_helper"
             ),
-            InlineKeyboardButton(text="+2", callback_data="FERRARIUDTI A"),
-        ],
-        [
             InlineKeyboardButton(
-                text=_["BACK_BUTTON"],
-                callback_data="settings_helper",
+                text=_["CLOSE_BUTTON"], callback_data="close"
             ),
-            InlineKeyboardButton(text=_["CLOSE_BUTTON"], callback_data="close"),
         ],
     ]
     return buttons
 
-
-def auth_users_markup(_, status: Union[bool, str] = None):
+def auth_users_markup(_, status):
     buttons = [
         [
-            InlineKeyboardButton(text=_["ST_B_7"], callback_data="AUTHANSWER"),
             InlineKeyboardButton(
-                text=_["ST_B_8"] if status == True else _["ST_B_9"],
-                callback_data="AUTH",
+                text=_["ST_B_6"], callback_data="AU|True"
+            ),
+            InlineKeyboardButton(
+                text=_["ST_B_7"], callback_data="AU|False"
             ),
         ],
         [
-            InlineKeyboardButton(text=_["ST_B_1"], callback_data="AUTHLIST"),
-        ],
-        [
             InlineKeyboardButton(
-                text=_["BACK_BUTTON"],
-                callback_data="settings_helper",
+                text=_["BACK_BUTTON"], callback_data="settings_helper"
             ),
-            InlineKeyboardButton(text=_["CLOSE_BUTTON"], callback_data="close"),
+            InlineKeyboardButton(
+                text=_["CLOSE_BUTTON"], callback_data="close"
+            ),
         ],
     ]
     return buttons
 
-
-def playmode_users_markup(
-    _,
-    Direct: Union[bool, str] = None,
-    Group: Union[bool, str] = None,
-    Playtype: Union[bool, str] = None,
-):
+def playmode_users_markup(_, status):
     buttons = [
         [
-            InlineKeyboardButton(text=_["ST_B_10"], callback_data="SEARCHANSWER"),
             InlineKeyboardButton(
-                text=_["ST_B_11"] if Direct == True else _["ST_B_12"],
-                callback_data="MODECHANGE",
+                text=_["ST_B_8"], callback_data="PM|Everyone"
             ),
-        ],
-        [
-            InlineKeyboardButton(text=_["ST_B_13"], callback_data="AUTHANSWER"),
             InlineKeyboardButton(
-                text=_["ST_B_8"] if Group == True else _["ST_B_9"],
-                callback_data="CHANNELMODECHANGE",
-            ),
-        ],
-        [
-            InlineKeyboardButton(text=_["ST_B_14"], callback_data="PLAYTYPEANSWER"),
-            InlineKeyboardButton(
-                text=_["ST_B_8"] if Playtype == True else _["ST_B_9"],
-                callback_data="PLAYTYPECHANGE",
+                text=_["ST_B_9"], callback_data="PM|Admin"
             ),
         ],
         [
             InlineKeyboardButton(
-                text=_["BACK_BUTTON"],
-                callback_data="settings_helper",
+                text=_["BACK_BUTTON"], callback_data="settings_helper"
             ),
-            InlineKeyboardButton(text=_["CLOSE_BUTTON"], callback_data="close"),
+            InlineKeyboardButton(
+                text=_["CLOSE_BUTTON"], callback_data="close"
+            ),
         ],
     ]
     return buttons
+    
