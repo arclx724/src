@@ -18,6 +18,7 @@ from .play import (
 )
 from .playlist import botplaylist_markup
 from .queue import queue_markup, queue_back_markup
+# Updated line below
 from .settings import (
     audio_quality_markup, 
     cleanmode_settings_markup, 
@@ -25,6 +26,7 @@ from .settings import (
     playmode_users_markup, 
     vote_mode_markup, 
     setting_markup,
-    aq_markup
+    aq_markup,
+    supp_markup
 )
 from .speed import speed_markup
