@@ -31,7 +31,7 @@ async def is_power(client, chat_id: int, user_id: int) -> bool:
         return False
 
 async def get_owner(client, chat_id: int) -> int:
-    """Get chat owner id"""
+    """Get chat owner id (Fixed for Pyrogram V2)"""
     async for member in client.get_chat_members(chat_id, filter=ChatMembersFilter.ADMINISTRATORS):
         if member.status == ChatMemberStatus.OWNER:
             return member.user.id
@@ -176,7 +176,7 @@ async def unmute_user(client, message: Message):
         await message.reply_text(f"❌ Failed to unmute: {e}")
 
 # ==========================================================
-# PROMOTE / DEMOTE (SMART FIX)
+# PROMOTE / DEMOTE
 # ==========================================================
 
 @nand.on_message(filters.group & filters.command(["promote"]))
@@ -228,53 +228,39 @@ async def promote_handler(client, message: Message):
     except Exception as e:
         await message.reply_text(f"❌ Failed to promote: {e}")
 
-@nand.on_message(filters.group & filters.command(["demote"]))
-async def demote_handler(client, message: Message):
+
+@nand.on_message(filters.group & filters.command("demote"))
+async def demote_user(client: Client, message: Message):
+    # Check if executor is admin
+    if not await is_power(client, message.chat.id, message.from_user.id):
+        return await message.reply_text("❌ Only admin can use this command.")
+
     user = await extract_target_user(client, message)
     if not user:
-        return await message.reply_text("Specify a user to demote.")
-        
-    me = await client.get_chat_member(message.chat.id, client.me.id)
-    if not me.privileges.can_promote_members:
-        return await message.reply_text("❌ I don't have permission to promote/demote users.")
-    
-    if not await is_power(client, message.chat.id, message.from_user.id):
-        return await message.reply_text("❌ Only admins can use this command.")
-    
-    owner_id = await get_owner(client, message.chat.id)
-    if user.id == owner_id:
-        return await message.reply_text("⚠️ You cannot demote the owner!")
+        return await message.reply_text("⚠️ Usage: Reply to a user or use '/demote @username'")
 
     try:
-        # Step 1: Remove Admin Title explicitly
-        try:
-            await client.set_administrator_title(message.chat.id, user.id, "")
-        except:
-            pass
-
-        # Step 2: Set ALL permissions to False
-        # We hardcode False here because we are removing rights, not giving them.
-        await client.promote_chat_member(
-            message.chat.id,
-            user.id,
-            privileges=ChatPrivileges(
-                can_change_info=False,
-                can_post_messages=False,
-                can_edit_messages=False,
-                can_delete_messages=False,
-                can_invite_users=False,
-                can_restrict_members=False,
-                can_pin_messages=False,
-                can_promote_members=False,
-                can_manage_video_chats=False,
-                can_manage_topics=False,
-                can_post_stories=False,
-                can_edit_stories=False,
-                can_delete_stories=False,
-                is_anonymous=False
-            )
-        )
-        await message.reply_text(f"✅ {user.mention} has been demoted to a normal member!")
+        target_member = await client.get_chat_member(message.chat.id, user.id)
     except Exception as e:
-        await message.reply_text(f"❌ Failed to demote: {e}")
+        if "USER_NOT_PARTICIPANT" in str(e):
+            return await message.reply_text("❌ Cannot demote: user is not a member of this chat.")
+        return await message.reply_text(f"⚠️ Failed to demote: {e}")
+
+    if target_member.status == ChatMemberStatus.OWNER:
+        return await message.reply_text("⚠️ You cannot demote the group owner.")
+    if user.id == message.from_user.id:
+        return await message.reply_text("❌ You cannot demote yourself.")
+
+    try:
+        # HERE IS THE MAGIC FIX: Ban then Unban to fully remove from admin list
+        await client.ban_chat_member(message.chat.id, user.id)
+        await client.unban_chat_member(message.chat.id, user.id)
         
+        await message.reply_text(f"✅ {user.mention} has been demoted from admin.")
+
+    except Exception as e:
+        if "CHAT_ADMIN_REQUIRED" in str(e):
+            await message.reply_text("❌ Bot must be admin with 'Ban Users' permission to demote.")
+        else:
+            await message.reply_text(f"⚠️ Failed to demote: {e}")
+    
