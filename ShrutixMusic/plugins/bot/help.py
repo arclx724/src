@@ -12,30 +12,31 @@ from ShrutixMusic.utils.inline.help import (
     security_help_panel,
     security_back_markup
 )
-from config import BANNED_USERS
-from strings import get_string, helpers
+from config import BANNED_USERS, START_IMG_URL
+from strings import get_string
 
-# --- HELPER FUNCTION TO FIND DATA ---
-def get_help_dict(helpers_obj):
-    # Agar helpers ek Module (File) hai
-    if isinstance(helpers_obj, py_types.ModuleType):
-        # 1. Try finding 'helpers' dict inside the module
-        if hasattr(helpers_obj, "helpers") and isinstance(helpers_obj.helpers, dict):
-            return helpers_obj.helpers
-        # 2. Try finding 'HELPERS' dict inside the module
-        elif hasattr(helpers_obj, "HELPERS") and isinstance(helpers_obj.HELPERS, dict):
-            return helpers_obj.HELPERS
-        # 3. Fallback: Search for ANY dictionary inside the module
-        else:
-            for name, val in vars(helpers_obj).items():
-                if not name.startswith("_") and isinstance(val, dict) and len(val) > 0:
-                    return val
-            return {} # Kuch nahi mila
-    # Agar already Dictionary hai
-    elif isinstance(helpers_obj, dict):
-        return helpers_obj
-    else:
-        return {}
+# --- SMART IMPORT LOGIC ---
+# Ye logic khud dhoondhega ki commands kahan chupe hain
+try:
+    from strings import HELPERS as helpers
+except ImportError:
+    try:
+        from strings import helpers
+    except ImportError:
+        helpers = {}
+
+def get_valid_helpers():
+    global helpers
+    # Agar helpers dictionary hai, to wahi return karo
+    if isinstance(helpers, dict):
+        return helpers
+    # Agar helpers module (file) hai, to uske andar dhoondho
+    elif isinstance(helpers, py_types.ModuleType):
+        if hasattr(helpers, "HELPERS") and isinstance(helpers.HELPERS, dict):
+            return helpers.HELPERS
+        elif hasattr(helpers, "helpers") and isinstance(helpers.helpers, dict):
+            return helpers.helpers
+    return {}
 
 # ======================================================
 # 1. MAIN HELP COMMAND (Shows 2 Buttons)
@@ -61,27 +62,23 @@ async def helper_private(client, update: Union[types.Message, types.CallbackQuer
             pass
         keyboard = InlineKeyboardMarkup(private_help_panel(_))
         await update.reply_photo(
-            photo=config.START_IMG_URL,
+            photo=START_IMG_URL,
             caption=_["help_2"],
             reply_markup=keyboard
         )
 
 # ======================================================
-# 2. MUSIC MANAGEMENT CLICKED (Auto-Fix Logic Here)
+# 2. MUSIC MANAGEMENT CLICKED (Fixed)
 # ======================================================
 @nand.on_callback_query(filters.regex("help_domain_music") & ~BANNED_USERS)
 @languageCB
 async def help_music_domain(client, CallbackQuery, _):
-    global helpers
-    # Use the smart finder function
-    help_dict = get_help_dict(helpers)
+    # Sahi dictionary fetch karo
+    help_dict = get_valid_helpers()
     
-    # Debug: Agar abhi bhi empty hai toh log mein pata chalega
-    if not help_dict:
-        print("[DEBUG] helpers dictionary is empty! Check strings/__init__.py")
-
     keyboard = []
     temp = []
+    # Ab loop sahi dictionary par chalega
     for count, key in enumerate(help_dict):
         if count % 3 == 0 and count > 0:
             keyboard.append(temp)
@@ -113,8 +110,7 @@ async def help_security_domain(client, CallbackQuery, _):
 @nand.on_callback_query(filters.regex(r"help_callback") & ~BANNED_USERS)
 @languageCB
 async def helper_cb(client, CallbackQuery, _):
-    global helpers
-    help_dict = get_help_dict(helpers)
+    help_dict = get_valid_helpers()
 
     callback_data = CallbackQuery.data.strip()
     cb = callback_data.split(None, 1)[1]
