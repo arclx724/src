@@ -55,6 +55,32 @@ def audio_quality_markup(_, current):
     ]
     return buttons
 
+# --- NEW ADDITION: AQ MARKUP (Stream ke liye) ---
+def aq_markup(_, chat_id):
+    buttons = [
+        [
+            InlineKeyboardButton(
+                text="Low",
+                callback_data=f"AQ|Low|{chat_id}",
+            ),
+            InlineKeyboardButton(
+                text="Medium",
+                callback_data=f"AQ|Medium|{chat_id}",
+            ),
+            InlineKeyboardButton(
+                text="High",
+                callback_data=f"AQ|High|{chat_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text=_["CLOSE_BUTTON"],
+                callback_data="close",
+            ),
+        ],
+    ]
+    return buttons
+
 def cleanmode_settings_markup(_, status):
     buttons = [
         [
@@ -118,7 +144,6 @@ def playmode_users_markup(_, status):
     ]
     return buttons
 
-# --- NEW ADDITION: Vote Mode Markup ---
 def vote_mode_markup(_, status):
     buttons = [
         [
