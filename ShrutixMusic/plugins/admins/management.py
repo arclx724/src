@@ -1,6 +1,6 @@
 from pyrogram import filters
 from pyrogram.enums import ChatMemberStatus
-from pyrogram.types import Message
+from pyrogram.types import Message, ChatPrivileges
 from ShrutixMusic import nand
 
 ERROR_TEXT = "I don't know who you're talking about, you're going to need to specify a user...!"
@@ -26,18 +26,22 @@ async def promote_handler(client, message: Message):
         return await message.reply(ERROR_TEXT)
 
     issuer = await client.get_chat_member(message.chat.id, message.from_user.id)
-    if issuer.status not in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]:
+    if issuer.status not in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER):
         return
 
-    await client.promote_chat_member(
-        chat_id=message.chat.id,
-        user_id=target.id,
+    privileges = ChatPrivileges(
         can_change_info=True,
         can_delete_messages=True,
         can_invite_users=True,
         can_restrict_members=True,
         can_pin_messages=True,
         can_promote_members=False
+    )
+
+    await client.promote_chat_member(
+        message.chat.id,
+        target.id,
+        privileges
     )
 
     await message.reply(f"✅ {target.mention} promoted successfully.")
@@ -51,18 +55,22 @@ async def demote_handler(client, message: Message):
         return await message.reply(ERROR_TEXT)
 
     issuer = await client.get_chat_member(message.chat.id, message.from_user.id)
-    if issuer.status not in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]:
+    if issuer.status not in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER):
         return
 
-    await client.promote_chat_member(
-        chat_id=message.chat.id,
-        user_id=target.id,
+    privileges = ChatPrivileges(
         can_change_info=False,
         can_delete_messages=False,
         can_invite_users=False,
         can_restrict_members=False,
         can_pin_messages=False,
         can_promote_members=False
+    )
+
+    await client.promote_chat_member(
+        message.chat.id,
+        target.id,
+        privileges
     )
 
     await message.reply(f"✅ {target.mention} demoted successfully.")
