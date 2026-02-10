@@ -4,8 +4,8 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from ShrutixMusic import nand
 from config import SUPPORT_CHAT
 
+# --- 1. MAIN MENU (The 2 Buttons) ---
 def private_help_panel(_):
-    # --- YE HAI WO 2 BUTTONS WALA MENU ---
     buttons = [
         [
             InlineKeyboardButton(
@@ -23,14 +23,14 @@ def private_help_panel(_):
     ]
     return buttons
 
+# --- 2. BACK BUTTON (Wapas 2 Buttons pe jaane ke liye) ---
 def help_back_markup(_):
-    # Music Menu se wapas aane ke liye
     return InlineKeyboardMarkup(
         [
             [
                 InlineKeyboardButton(
                     text=_["BACK_BUTTON"],
-                    callback_data="settings_back_helper", # Wapas 2 buttons pe le jayega
+                    callback_data="settings_back_helper",
                 ),
                 InlineKeyboardButton(
                     text=_["CLOSE_BUTTON"], callback_data="close"
@@ -39,7 +39,7 @@ def help_back_markup(_):
         ]
     )
 
-# --- SECURITY MENU BUTTONS ---
+# --- 3. SECURITY MENU (Group Management Grid) ---
 def security_help_panel(_):
     buttons = [
         [
@@ -63,8 +63,8 @@ def security_help_panel(_):
     ]
     return buttons
 
+# --- 4. SECURITY TEXT BACK BUTTON ---
 def security_back_markup(_):
-    # Security Text se wapas Security Menu pe aane ke liye
     return InlineKeyboardMarkup(
         [
             [
