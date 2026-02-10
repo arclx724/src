@@ -9,5 +9,13 @@ from .help import (
 from .play import track_markup, stream_markup, telegram_markup, close_markup, stream_markup_timer
 from .playlist import botplaylist_markup
 from .queue import queue_markup, queue_back_markup
-from .settings import audio_quality_markup, cleanmode_settings_markup, auth_users_markup, playmode_users_markup
+# Updated line below to include aq_markup
+from .settings import (
+    audio_quality_markup, 
+    cleanmode_settings_markup, 
+    auth_users_markup, 
+    playmode_users_markup, 
+    vote_mode_markup, 
+    aq_markup
+)
 from .speed import speed_markup
