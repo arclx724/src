@@ -20,6 +20,11 @@ def setting_markup(_):
         ],
         [
             InlineKeyboardButton(
+                text="Vote Mode", callback_data="VM"
+            ),
+        ],
+        [
+            InlineKeyboardButton(
                 text=_["CLOSE_BUTTON"], callback_data="close"
             ),
         ],
@@ -100,6 +105,28 @@ def playmode_users_markup(_, status):
             ),
             InlineKeyboardButton(
                 text=_["ST_B_9"], callback_data="PM|Admin"
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text=_["BACK_BUTTON"], callback_data="settings_helper"
+            ),
+            InlineKeyboardButton(
+                text=_["CLOSE_BUTTON"], callback_data="close"
+            ),
+        ],
+    ]
+    return buttons
+
+# --- NEW ADDITION: Vote Mode Markup ---
+def vote_mode_markup(_, status):
+    buttons = [
+        [
+            InlineKeyboardButton(
+                text="Enable", callback_data="VOTE|True"
+            ),
+            InlineKeyboardButton(
+                text="Disable", callback_data="VOTE|False"
             ),
         ],
         [
