@@ -1,3 +1,4 @@
+import config
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 def setting_markup(_):
@@ -55,7 +56,6 @@ def audio_quality_markup(_, current):
     ]
     return buttons
 
-# --- NEW ADDITION: AQ MARKUP (Stream ke liye) ---
 def aq_markup(_, chat_id):
     buttons = [
         [
@@ -160,6 +160,22 @@ def vote_mode_markup(_, status):
             ),
             InlineKeyboardButton(
                 text=_["CLOSE_BUTTON"], callback_data="close"
+            ),
+        ],
+    ]
+    return buttons
+
+# --- NEW ADDITION: SUPP MARKUP (Ping ke liye) ---
+def supp_markup(_):
+    buttons = [
+        [
+            InlineKeyboardButton(
+                text="Support",
+                url=config.SUPPORT_CHAT,
+            ),
+            InlineKeyboardButton(
+                text=_["CLOSE_BUTTON"],
+                callback_data="close",
             ),
         ],
     ]
