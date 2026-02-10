@@ -163,7 +163,7 @@ async def security_helper_cb(client, CallbackQuery, _):
 
     if cmd == "antinuke":
         text = (
-            "☢️ **Anti-Nuke System**\n\n"
+            "☢️ **Anti-Cheater System**\n\n"
             "Protects the group from unauthorized bans/kicks/demotions.\n\n"
             "• **Trigger:** 3 Actions in 30 Seconds.\n"
             "• **Action:** Instant Demotion.\n\n"
@@ -226,5 +226,6 @@ async def security_helper_cb(client, CallbackQuery, _):
         reply_markup=keyboard,
         parse_mode=ParseMode.MARKDOWN
     )
+
 
 
