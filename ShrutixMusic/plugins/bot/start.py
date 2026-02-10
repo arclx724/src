@@ -4,8 +4,7 @@ from pyrogram import filters
 from pyrogram.enums import ChatType
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
-from config import BANNED_USERS
-from config import OWNER_ID
+from config import BANNED_USERS, OWNER_ID, START_IMG_URL
 from ShrutixMusic import nand
 from ShrutixMusic.utils.database import (
     add_served_chat,
@@ -27,6 +26,7 @@ async def start_pm(client, message: Message, _):
         name = message.text.split(None, 1)[1]
         if name[0:4] == "help":
             keyboard = help_pannel(_, True)
+            # Help menu usually text-based update
             return await message.reply_text(
                 _["help_1"].format(config.SUPPORT_CHAT), reply_markup=keyboard
             )
@@ -75,10 +75,11 @@ __Powered by {nand.mention}__
             )
             return
     
-    # Normal Start Message
+    # --- YAHAN IMAGE WAPAS AAYI HAI ---
     out = private_panel(_)
-    await message.reply_text(
-        _["start_2"].format(message.from_user.mention, nand.mention),
+    await message.reply_photo(
+        photo=START_IMG_URL,
+        caption=_["start_2"].format(message.from_user.mention, nand.mention),
         reply_markup=InlineKeyboardMarkup(out),
     )
 
@@ -88,11 +89,11 @@ __Powered by {nand.mention}__
 async def start_gp(client, message: Message, _):
     out = start_panel(_)
     uptime = int(time.time() - nand.start_time)
-    await message.reply_text(
-        _["start_1"].format(nand.mention, uptime),
+    # Group mein bhi Image wapas
+    await message.reply_photo(
+        photo=START_IMG_URL,
+        caption=_["start_1"].format(nand.mention, uptime),
         reply_markup=InlineKeyboardMarkup(out),
     )
     await add_served_chat(message.chat.id)
-    print(ex)
-
-
+    
