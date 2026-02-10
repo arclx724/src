@@ -10,7 +10,6 @@ from ShrutixMusic.utils.inline.help import (
     security_help_panel,
     security_back_markup
 )
-# Start Menu wale buttons import kiye
 from ShrutixMusic.utils.inline import private_panel
 from config import BANNED_USERS, START_IMG_URL
 
@@ -48,7 +47,9 @@ async def helper_private(client, update: Union[types.Message, types.CallbackQuer
             pass
         keyboard = InlineKeyboardMarkup(private_help_panel(_))
         await update.edit_message_text(
-            _["help_2"], reply_markup=keyboard
+            _["help_2"],
+            reply_markup=keyboard,
+            parse_mode="markdown"
         )
     else:
         try:
@@ -63,7 +64,7 @@ async def helper_private(client, update: Union[types.Message, types.CallbackQuer
         )
 
 # ======================================================
-# 2. BACK TO START MENU (YE FIX HAI)
+# 2. BACK TO START MENU
 # ======================================================
 @nand.on_callback_query(filters.regex("settings_back_home") & ~BANNED_USERS)
 @LanguageStart
@@ -72,14 +73,10 @@ async def back_to_home_flash(client, CallbackQuery, _):
         await CallbackQuery.answer()
     except:
         pass
-    
-    # Start Menu ke buttons load karo
+
     out = private_panel(_)
-    
-    # Start Message ka Text format karo
     text = _["start_2"].format(CallbackQuery.from_user.mention, nand.mention)
-    
-    # Message ko Edit karke wapas Start Menu bana do
+
     await CallbackQuery.edit_message_caption(
         caption=text,
         reply_markup=InlineKeyboardMarkup(out)
@@ -92,21 +89,29 @@ async def back_to_home_flash(client, CallbackQuery, _):
 @languageCB
 async def help_music_domain(client, CallbackQuery, _):
     command_list = list(FALLBACK_HELP_DICT.keys())
-    
+
     keyboard = []
     temp = []
     for count, key in enumerate(command_list):
         if count % 3 == 0 and count > 0:
             keyboard.append(temp)
             temp = []
-        temp.append(InlineKeyboardButton(text=key.title(), callback_data=f"help_callback {key}"))
+        temp.append(
+            InlineKeyboardButton(
+                text=key.title(),
+                callback_data=f"help_callback {key}"
+            )
+        )
     keyboard.append(temp)
-    
-    keyboard.append([InlineKeyboardButton(text=_["BACK_BUTTON"], callback_data="settings_back_helper")])
-    
+
+    keyboard.append(
+        [InlineKeyboardButton(text=_["BACK_BUTTON"], callback_data="settings_back_helper")]
+    )
+
     await CallbackQuery.edit_message_text(
         "🎸 **Music Management Commands**\n\nChoose a category below:",
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="markdown"
     )
 
 # ======================================================
@@ -117,7 +122,8 @@ async def help_music_domain(client, CallbackQuery, _):
 async def help_security_domain(client, CallbackQuery, _):
     await CallbackQuery.edit_message_text(
         "🛡️ **Group Management Commands**\n\nChoose a category below:",
-        reply_markup=InlineKeyboardMarkup(security_help_panel(_))
+        reply_markup=InlineKeyboardMarkup(security_help_panel(_)),
+        parse_mode="markdown"
     )
 
 # ======================================================
@@ -128,17 +134,20 @@ async def help_security_domain(client, CallbackQuery, _):
 async def helper_cb(client, CallbackQuery, _):
     callback_data = CallbackQuery.data.strip()
     cb = callback_data.split(None, 1)[1].lower()
-    
+
     keyboard = help_back_markup(_)
-    
+
     if cb in FALLBACK_HELP_DICT:
         await CallbackQuery.edit_message_text(
-            FALLBACK_HELP_DICT[cb], reply_markup=keyboard
+            FALLBACK_HELP_DICT[cb],
+            reply_markup=keyboard,
+            parse_mode="markdown"
         )
     else:
         await CallbackQuery.edit_message_text(
             f"**{cb.title()} Commands**\n\nComing soon!",
-            reply_markup=keyboard
+            reply_markup=keyboard,
+            parse_mode="markdown"
         )
 
 # ======================================================
@@ -211,9 +220,8 @@ async def security_helper_cb(client, CallbackQuery, _):
             "• `/mute`, `/unmute` - Mute/Unmute."
         )
 
-    await CallbackQuery.edit_message_text(text, reply_markup=keyboard)
-                             
-
-
-
-
+    await CallbackQuery.edit_message_text(
+        text,
+        reply_markup=keyboard,
+        parse_mode="markdown"
+    )
