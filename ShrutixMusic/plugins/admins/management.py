@@ -9,13 +9,11 @@ async def extract_target_and_title(client: Client, message: Message):
     target = None
     title = None
 
-    # Reply case
     if message.reply_to_message:
         target = message.reply_to_message.from_user
         if len(message.command) > 1:
             title = " ".join(message.command[1:])
 
-    # Username / UserID case
     elif len(message.command) > 1:
         try:
             target = await client.get_users(message.command[1])
@@ -34,13 +32,15 @@ async def promote_handler(client: Client, message: Message):
     if not message.from_user:
         return
 
-    issuer = await client.get_chat_member(message.chat.id, message.from_user.id)
-    if issuer.status not in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]:
-        return
-
+    # ✅ FIRST: extract target
     target, title = await extract_target_and_title(client, message)
     if not target:
         return await message.reply(ERROR_TEXT)
+
+    # ✅ THEN: permission check
+    issuer = await client.get_chat_member(message.chat.id, message.from_user.id)
+    if issuer.status not in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]:
+        return
 
     target_member = await client.get_chat_member(message.chat.id, target.id)
 
@@ -82,13 +82,15 @@ async def demote_handler(client: Client, message: Message):
     if not message.from_user:
         return
 
-    issuer = await client.get_chat_member(message.chat.id, message.from_user.id)
-    if issuer.status not in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]:
-        return
-
+    # ✅ FIRST: extract target
     target, _ = await extract_target_and_title(client, message)
     if not target:
         return await message.reply(ERROR_TEXT)
+
+    # ✅ THEN: permission check
+    issuer = await client.get_chat_member(message.chat.id, message.from_user.id)
+    if issuer.status not in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]:
+        return
 
     target_member = await client.get_chat_member(message.chat.id, target.id)
 
