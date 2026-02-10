@@ -51,3 +51,34 @@ async def get_media_delete_config(chat_id: int):
         return False, 30
     return data.get("status", False), data.get("delay", 30)
     
+# ==========================================================
+# ANTI-NUKE WHITELIST DATABASE
+# ==========================================================
+nukedb = mongodb.antinuke
+
+async def whitelist_user(chat_id: int, user_id: int):
+    """Add user to whitelist (Ignore checks)"""
+    await nukedb.update_one(
+        {"chat_id": chat_id},
+        {"$addToSet": {"whitelist": user_id}},
+        upsert=True
+    )
+
+async def unwhitelist_user(chat_id: int, user_id: int):
+    """Remove user from whitelist"""
+    await nukedb.update_one(
+        {"chat_id": chat_id},
+        {"$pull": {"whitelist": user_id}}
+    )
+
+async def is_user_whitelisted(chat_id: int, user_id: int) -> bool:
+    """Check if user is trusted"""
+    doc = await nukedb.find_one({"chat_id": chat_id})
+    if not doc:
+        return False
+    return user_id in doc.get("whitelist", [])
+
+async def get_whitelisted_users(chat_id: int):
+    doc = await nukedb.find_one({"chat_id": chat_id})
+    return doc.get("whitelist", []) if doc else []
+    
