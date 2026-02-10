@@ -1,6 +1,7 @@
 import time
 from pyrogram import filters
-from pyrogram.enums import ChatMemberStatus, ChatPermissions
+from pyrogram.enums import ChatMemberStatus
+from pyrogram.types import ChatPermissions
 from pyrogram.types import Message, ChatPrivileges
 from ShrutixMusic import nand, mongodb
 
