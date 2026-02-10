@@ -31,7 +31,7 @@ async def is_power(client, chat_id: int, user_id: int) -> bool:
         return False
 
 async def get_owner(client, chat_id: int) -> int:
-    """Get chat owner id (Fixed for Pyrogram V2)"""
+    """Get chat owner id"""
     async for member in client.get_chat_members(chat_id, filter=ChatMembersFilter.ADMINISTRATORS):
         if member.status == ChatMemberStatus.OWNER:
             return member.user.id
@@ -176,7 +176,7 @@ async def unmute_user(client, message: Message):
         await message.reply_text(f"❌ Failed to unmute: {e}")
 
 # ==========================================================
-# PROMOTE / DEMOTE
+# PROMOTE / DEMOTE (SMART FIX)
 # ==========================================================
 
 @nand.on_message(filters.group & filters.command(["promote"]))
@@ -185,35 +185,42 @@ async def promote_handler(client, message: Message):
     if not user:
         return await message.reply_text("Specify a user to promote.")
     
-    # Title Handling: /promote @user [Title]
     title = " ".join(message.command[2:]) if len(message.command) > 2 else None
+
+    # Get Bot's Own Permissions
+    me = await client.get_chat_member(message.chat.id, client.me.id)
+    if not me.privileges or not me.privileges.can_promote_members:
+        return await message.reply_text("❌ I don't have permission to promote users.")
 
     if not await is_power(client, message.chat.id, message.from_user.id):
         return await message.reply_text("❌ Only admins can use this command.")
+    
     owner_id = await get_owner(client, message.chat.id)
     if user.id == owner_id:
         return await message.reply_text("⚠️ User is already owner.")
 
+    # ERROR FIX: Only give rights that the BOT actually has
+    bot_rights = me.privileges
+    
     try:
         await client.promote_chat_member(
             message.chat.id,
             user.id,
             privileges=ChatPrivileges(
-                can_change_info=True,
-                can_delete_messages=True,
-                can_invite_users=True,
-                can_restrict_members=True,
-                can_pin_messages=True,
-                can_promote_members=False,
-                can_manage_video_chats=True,
-                can_manage_topics=True,
-                can_post_stories=True,
-                can_edit_stories=True,
-                can_delete_stories=True,
+                can_change_info=bot_rights.can_change_info,
+                can_delete_messages=bot_rights.can_delete_messages,
+                can_invite_users=bot_rights.can_invite_users,
+                can_restrict_members=bot_rights.can_restrict_members,
+                can_pin_messages=bot_rights.can_pin_messages,
+                can_promote_members=False, # Standard safety
+                can_manage_video_chats=bot_rights.can_manage_video_chats,
+                can_manage_topics=bot_rights.can_manage_topics,
+                can_post_stories=bot_rights.can_post_stories,
+                can_edit_stories=bot_rights.can_edit_stories,
+                can_delete_stories=bot_rights.can_delete_stories,
                 is_anonymous=False
             )
         )
-        # Set Title if provided
         if title:
             await client.set_administrator_title(message.chat.id, user.id, title)
             
@@ -230,8 +237,10 @@ async def demote_handler(client, message: Message):
     me = await client.get_chat_member(message.chat.id, client.me.id)
     if not me.privileges.can_promote_members:
         return await message.reply_text("❌ I don't have permission to promote/demote users.")
+    
     if not await is_power(client, message.chat.id, message.from_user.id):
         return await message.reply_text("❌ Only admins can use this command.")
+    
     owner_id = await get_owner(client, message.chat.id)
     if user.id == owner_id:
         return await message.reply_text("⚠️ You cannot demote the owner!")
@@ -243,7 +252,8 @@ async def demote_handler(client, message: Message):
         except:
             pass
 
-        # Step 2: Remove ALL rights (Demote to member)
+        # Step 2: Set ALL permissions to False
+        # We hardcode False here because we are removing rights, not giving them.
         await client.promote_chat_member(
             message.chat.id,
             user.id,
