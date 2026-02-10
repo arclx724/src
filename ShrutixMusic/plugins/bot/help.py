@@ -17,7 +17,7 @@ from config import BANNED_USERS, START_IMG_URL
 # --- HARDCODED HELP TEXT ---
 FALLBACK_HELP_DICT = {
     "admin": "⭐️ **Admin Commands:**\n\n• /pause - Pause the playing music.\n• /resume - Resume the paused music.\n• /skip - Skip the current track.\n• /stop - Stop the music and clear queue.\n• /queue - Check the current queue.",
-    "auth": "**🛡️ Auth Users:**\n\nAuthorized users can use admin commands without admin rights.\n\n• /auth [Username] - Add user to auth list.\n• /unauth [Username] - Remove user.\n• /authusers - List auth users.",
+    "auth": "auth": "🛡️ **Auth Users:**\n\nAuthorized users can use admin commands without admin rights.\n\n• /auth [Username] - Add user to auth list.\n• /unauth [Username] - Remove user.\n• /authusers - List auth users.",
     "broadcast": "**📢 Broadcast:**\n\n• /broadcast [Message] - Send message to all chats.\n• /broadcast_pin - Pin the broadcasted message.",
     "blacklist": "**🚫 Blacklist Chat:**\n\n• /blacklistchat [Chat ID] - Block bot usage in a chat.\n• /whitelistchat [Chat ID] - Unblock chat.",
     "gban": "**🌍 Global Ban:**\n\n• /gban [User] - Ban user from all bot chats.\n• /ungban [User] - Unban user.",
@@ -213,4 +213,5 @@ async def security_helper_cb(client, CallbackQuery, _):
 
     await CallbackQuery.edit_message_text(text, reply_markup=keyboard)
                              
+
 
