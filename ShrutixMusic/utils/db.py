@@ -123,3 +123,21 @@ async def remove_nsfw_api(api_user: str):
 async def get_all_nsfw_apis_count():
     return await apidb.count_documents({})
     
+# ==========================================================
+# ANTI-EDIT DATABASE
+# ==========================================================
+antieditdb = mongodb.antiedit
+
+async def set_antiedit_status(chat_id: int, status: bool):
+    """Enable or Disable Anti-Edit"""
+    await antieditdb.update_one(
+        {"chat_id": chat_id},
+        {"$set": {"status": status}},
+        upsert=True
+    )
+
+async def is_antiedit_enabled(chat_id: int) -> bool:
+    """Check if enabled"""
+    doc = await antieditdb.find_one({"chat_id": chat_id})
+    return doc.get("status", False) if doc else False
+
