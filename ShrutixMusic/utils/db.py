@@ -159,3 +159,44 @@ async def is_antibot_enabled(chat_id: int) -> bool:
     doc = await antibotdb.find_one({"chat_id": chat_id})
     return doc.get("status", False) if doc else False
     
+# ==========================================================
+# ANTI-ABUSE DATABASE
+# ==========================================================
+abusedb = mongodb.abuse
+
+# --- Settings ---
+async def set_abuse_status(chat_id: int, status: bool):
+    await abusedb.update_one(
+        {"chat_id": chat_id},
+        {"$set": {"status": status}},
+        upsert=True
+    )
+
+async def is_abuse_enabled(chat_id: int) -> bool:
+    doc = await abusedb.find_one({"chat_id": chat_id})
+    return doc.get("status", False) if doc else False
+
+# --- Abuse Specific Whitelist ---
+async def abuse_whitelist_user(chat_id: int, user_id: int):
+    await abusedb.update_one(
+        {"chat_id": chat_id},
+        {"$addToSet": {"whitelist": user_id}},
+        upsert=True
+    )
+
+async def abuse_unwhitelist_user(chat_id: int, user_id: int):
+    await abusedb.update_one(
+        {"chat_id": chat_id},
+        {"$pull": {"whitelist": user_id}}
+    )
+
+async def is_abuse_whitelisted(chat_id: int, user_id: int) -> bool:
+    doc = await abusedb.find_one({"chat_id": chat_id})
+    if not doc:
+        return False
+    return user_id in doc.get("whitelist", [])
+
+async def get_abuse_whitelisted_users(chat_id: int):
+    doc = await abusedb.find_one({"chat_id": chat_id})
+    return doc.get("whitelist", []) if doc else []
+    
