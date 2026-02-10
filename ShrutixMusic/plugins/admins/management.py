@@ -262,6 +262,11 @@ async def demote_handler(client, message: Message):
             "I don't know who you're talking about, you're going to need to specify a user...!"
         )
 
+    # Permission check: Bot must have promote rights
+    me = await client.get_chat_member(message.chat.id, client.me.id)
+    if not me.privileges.can_promote_members:
+        return await message.reply_text("❌ I don't have permission to promote/demote users.")
+
     if not await is_power(client, message.chat.id, message.from_user.id):
         return await message.reply_text("❌ Only admins can use this command.")
 
@@ -270,17 +275,31 @@ async def demote_handler(client, message: Message):
         return await message.reply_text("⚠️ You cannot demote the owner!")
 
     try:
+        # Step 1: Remove Admin Title (Set to empty string)
+        try:
+            await client.set_administrator_title(message.chat.id, user.id, "")
+        except:
+            pass
+
+        # Step 2: Set ALL permissions to False and is_anonymous to False
         await client.promote_chat_member(
-            message.chat.id,
-            user.id,
+            chat_id=message.chat.id,
+            user_id=user.id,
+            is_anonymous=False,           # IMPORTANT: Must be False to remove admin status
             can_change_info=False,
+            can_post_messages=False,
+            can_edit_messages=False,
             can_delete_messages=False,
             can_invite_users=False,
             can_restrict_members=False,
             can_pin_messages=False,
             can_promote_members=False,
-            can_manage_video_chats=False
+            can_manage_video_chats=False,
+            can_manage_chat=False,
+            can_manage_topics=False
         )
-        await message.reply_text(f"✅ {user.mention} demoted successfully!")
+        await message.reply_text(f"✅ {user.mention} has been demoted to a normal member!")
+    
     except Exception as e:
         await message.reply_text(f"❌ Failed to demote: {e}")
+        
