@@ -200,7 +200,7 @@ async def unmute_user(client, message: Message):
 
 
 # ==========================================================
-# PROMOTE / DEMOTE (Updated for Pyrogram V2)
+# PROMOTE / DEMOTE (Updated with Story Permissions)
 # ==========================================================
 
 @nand.on_message(filters.group & filters.command(["promote"]))
@@ -263,7 +263,7 @@ async def demote_handler(client, message: Message):
         except:
             pass
 
-        # Demote by setting all privileges to False
+        # Demote FIX: Added Story Permissions to False
         await client.promote_chat_member(
             message.chat.id,
             user.id,
@@ -277,7 +277,12 @@ async def demote_handler(client, message: Message):
                 can_pin_messages=False,
                 can_promote_members=False,
                 can_manage_video_chats=False,
-                is_anonymous=False
+                can_manage_topics=False,
+                is_anonymous=False,
+                # In naye rights ko False karna zaroori hai
+                can_post_stories=False,
+                can_edit_stories=False,
+                can_delete_stories=False
             )
         )
         await message.reply_text(f"✅ {user.mention} has been demoted to a normal member!")
