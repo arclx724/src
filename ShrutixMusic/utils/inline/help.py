@@ -22,7 +22,7 @@ def private_help_panel(_):
         [
             InlineKeyboardButton(
                 text=_["BACK_BUTTON"], # "Back" Button
-                callback_data="settings_back_home" # Ab ye Home/Start par le jayega
+                callback_data="settings_back_home" # Ye Home/Start par le jayega
             )
         ],
     ]
@@ -32,7 +32,8 @@ def private_help_panel(_):
 def help_pannel(_, update):
     return private_help_panel(_)
 
-# --- 2. BACK BUTTON FOR SUB-MENUS ---
+# --- 2. BACK BUTTON FOR SUB-MENUS (Music Management ke andar) ---
+# Yahan se Close button hata diya gaya hai.
 def help_back_markup(_):
     return InlineKeyboardMarkup(
         [
@@ -40,15 +41,12 @@ def help_back_markup(_):
                 InlineKeyboardButton(
                     text=_["BACK_BUTTON"],
                     callback_data="settings_back_helper",
-                ),
-                InlineKeyboardButton(
-                    text=_["CLOSE_BUTTON"], callback_data="close"
                 )
             ]
         ]
     )
 
-# --- 3. SECURITY MENU (Vertical/Grid) ---
+# --- 3. SECURITY MENU (Group Management Main Page) ---
 def security_help_panel(_):
     buttons = [
         [
@@ -72,7 +70,8 @@ def security_help_panel(_):
     ]
     return buttons
 
-# --- 4. SECURITY BACK BUTTON ---
+# --- 4. SECURITY BACK BUTTON (Group Management ke andar) ---
+# Yahan se bhi Close button hata diya gaya hai.
 def security_back_markup(_):
     return InlineKeyboardMarkup(
         [
@@ -80,9 +79,6 @@ def security_back_markup(_):
                 InlineKeyboardButton(
                     text=_["BACK_BUTTON"],
                     callback_data="help_domain_security", 
-                ),
-                InlineKeyboardButton(
-                    text=_["CLOSE_BUTTON"], callback_data="close"
                 )
             ]
         ]
