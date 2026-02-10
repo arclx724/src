@@ -1,7 +1,7 @@
 import time
 from pyrogram import filters
-from pyrogram.types import ChatPermissions, Message
-from pyrogram.enums import ChatMemberStatus  # ChatMemberPermission hata diya
+from pyrogram.types import ChatPermissions, ChatPrivileges, Message
+from pyrogram.enums import ChatMemberStatus, ChatMembersFilter
 
 from ShrutixMusic import nand  # Your bot client
 from ShrutixMusic.core.mongo import mongodb  # MongoDB instance
@@ -11,12 +11,12 @@ from ShrutixMusic.core.mongo import mongodb  # MongoDB instance
 # ==========================================================
 BAN_LIMIT = 10  # Max combined bans/kicks per 24 hrs per admin
 BAN_TIME_WINDOW = 24 * 60 * 60
-ADMIN_BAN_TRACKER = {}  # In-memory backup, MongoDB used for persistence
+ADMIN_BAN_TRACKER = {}
 
 # MongoDB Collections
 warnsdb = mongodb.warns
-abusedb = mongodb.abuse  # Ban/Kick abuse counter
-limitsdb = mongodb.limits  # Stores per-admin action timestamps
+abusedb = mongodb.abuse
+limitsdb = mongodb.limits
 
 # ==========================================================
 # HELPER FUNCTIONS
@@ -31,11 +31,10 @@ async def is_power(client, chat_id: int, user_id: int) -> bool:
         return False
 
 async def get_owner(client, chat_id: int) -> int:
-    """Get chat owner id"""
-    members = await client.get_chat_members(chat_id, filter="administrators")
-    for m in members:
-        if m.status == ChatMemberStatus.OWNER:
-            return m.user.id
+    """Get chat owner id (Fixed for Pyrogram V2)"""
+    async for member in client.get_chat_members(chat_id, filter=ChatMembersFilter.ADMINISTRATORS):
+        if member.status == ChatMemberStatus.OWNER:
+            return member.user.id
     return 0
 
 async def extract_target_user(client, message: Message):
@@ -84,9 +83,7 @@ async def log_abuse(chat_id: int, admin_id: int):
 async def kick_user(client, message: Message):
     user = await extract_target_user(client, message)
     if not user:
-        return await message.reply_text(
-            "I don't know who you're talking about, you're going to need to specify a user...!"
-        )
+        return await message.reply_text("I don't know who you're talking about, specify a user...!")
 
     if not await is_power(client, message.chat.id, message.from_user.id):
         return await message.reply_text("❌ Only admins can use this command.")
@@ -97,9 +94,7 @@ async def kick_user(client, message: Message):
 
     can_do, _ = await abuse_check(message.chat.id, message.from_user.id)
     if not can_do:
-        return await message.reply_text(
-            f"⛔ Ban/Kick limit reached! Max {BAN_LIMIT} in 24 hrs."
-        )
+        return await message.reply_text(f"⛔ Ban/Kick limit reached! Max {BAN_LIMIT} in 24 hrs.")
 
     me = await client.get_chat_member(message.chat.id, client.me.id)
     if not me.privileges.can_restrict_members:
@@ -118,9 +113,7 @@ async def kick_user(client, message: Message):
 async def ban_user(client, message: Message):
     user = await extract_target_user(client, message)
     if not user:
-        return await message.reply_text(
-            "I don't know who you're talking about, you're going to need to specify a user...!"
-        )
+        return await message.reply_text("I don't know who you're talking about, specify a user...!")
 
     if not await is_power(client, message.chat.id, message.from_user.id):
         return await message.reply_text("❌ Only admins can use this command.")
@@ -131,9 +124,7 @@ async def ban_user(client, message: Message):
 
     can_do, _ = await abuse_check(message.chat.id, message.from_user.id)
     if not can_do:
-        return await message.reply_text(
-            f"⛔ Ban/Kick limit reached! Max {BAN_LIMIT} in 24 hrs."
-        )
+        return await message.reply_text(f"⛔ Ban/Kick limit reached! Max {BAN_LIMIT} in 24 hrs.")
 
     me = await client.get_chat_member(message.chat.id, client.me.id)
     if not me.privileges.can_restrict_members:
@@ -151,9 +142,7 @@ async def ban_user(client, message: Message):
 async def unban_user(client, message: Message):
     user = await extract_target_user(client, message)
     if not user:
-        return await message.reply_text(
-            "I don't know who you're talking about, you're going to need to specify a user...!"
-        )
+        return await message.reply_text("Specify a user to unban.")
 
     if not await is_power(client, message.chat.id, message.from_user.id):
         return await message.reply_text("❌ Only admins can use this command.")
@@ -169,9 +158,7 @@ async def unban_user(client, message: Message):
 async def mute_user(client, message: Message):
     user = await extract_target_user(client, message)
     if not user:
-        return await message.reply_text(
-            "I don't know who you're talking about, you're going to need to specify a user...!"
-        )
+        return await message.reply_text("Specify a user to mute.")
 
     if not await is_power(client, message.chat.id, message.from_user.id):
         return await message.reply_text("❌ Only admins can use this command.")
@@ -191,9 +178,7 @@ async def mute_user(client, message: Message):
 async def unmute_user(client, message: Message):
     user = await extract_target_user(client, message)
     if not user:
-        return await message.reply_text(
-            "I don't know who you're talking about, you're going to need to specify a user...!"
-        )
+        return await message.reply_text("Specify a user to unmute.")
 
     if not await is_power(client, message.chat.id, message.from_user.id):
         return await message.reply_text("❌ Only admins can use this command.")
@@ -215,16 +200,14 @@ async def unmute_user(client, message: Message):
 
 
 # ==========================================================
-# PROMOTE / DEMOTE
+# PROMOTE / DEMOTE (Updated for Pyrogram V2)
 # ==========================================================
 
 @nand.on_message(filters.group & filters.command(["promote"]))
 async def promote_handler(client, message: Message):
     user = await extract_target_user(client, message)
     if not user:
-        return await message.reply_text(
-            "I don't know who you're talking about, you're going to need to specify a user...!"
-        )
+        return await message.reply_text("Specify a user to promote.")
 
     title = " ".join(message.command[2:]) if len(message.command) > 2 else None
 
@@ -239,13 +222,16 @@ async def promote_handler(client, message: Message):
         await client.promote_chat_member(
             message.chat.id,
             user.id,
-            can_change_info=True,
-            can_delete_messages=True,
-            can_invite_users=True,
-            can_restrict_members=True,
-            can_pin_messages=True,
-            can_promote_members=False,
-            can_manage_video_chats=True
+            privileges=ChatPrivileges(
+                can_change_info=True,
+                can_delete_messages=True,
+                can_invite_users=True,
+                can_restrict_members=True,
+                can_pin_messages=True,
+                can_promote_members=False,
+                can_manage_video_chats=True,
+                is_anonymous=False
+            )
         )
         if title:
             await client.set_administrator_title(message.chat.id, user.id, title)
@@ -258,11 +244,8 @@ async def promote_handler(client, message: Message):
 async def demote_handler(client, message: Message):
     user = await extract_target_user(client, message)
     if not user:
-        return await message.reply_text(
-            "I don't know who you're talking about, you're going to need to specify a user...!"
-        )
+        return await message.reply_text("Specify a user to demote.")
 
-    # Permission check: Bot must have promote rights
     me = await client.get_chat_member(message.chat.id, client.me.id)
     if not me.privileges.can_promote_members:
         return await message.reply_text("❌ I don't have permission to promote/demote users.")
@@ -275,31 +258,29 @@ async def demote_handler(client, message: Message):
         return await message.reply_text("⚠️ You cannot demote the owner!")
 
     try:
-        # Step 1: Remove Admin Title (Set to empty string)
         try:
             await client.set_administrator_title(message.chat.id, user.id, "")
         except:
             pass
 
-        # Step 2: Set ALL permissions to False and is_anonymous to False
+        # Demote by setting all privileges to False
         await client.promote_chat_member(
-            chat_id=message.chat.id,
-            user_id=user.id,
-            is_anonymous=False,           # IMPORTANT: Must be False to remove admin status
-            can_change_info=False,
-            can_post_messages=False,
-            can_edit_messages=False,
-            can_delete_messages=False,
-            can_invite_users=False,
-            can_restrict_members=False,
-            can_pin_messages=False,
-            can_promote_members=False,
-            can_manage_video_chats=False,
-            can_manage_chat=False,
-            can_manage_topics=False
+            message.chat.id,
+            user.id,
+            privileges=ChatPrivileges(
+                can_change_info=False,
+                can_post_messages=False,
+                can_edit_messages=False,
+                can_delete_messages=False,
+                can_invite_users=False,
+                can_restrict_members=False,
+                can_pin_messages=False,
+                can_promote_members=False,
+                can_manage_video_chats=False,
+                is_anonymous=False
+            )
         )
         await message.reply_text(f"✅ {user.mention} has been demoted to a normal member!")
-    
     except Exception as e:
         await message.reply_text(f"❌ Failed to demote: {e}")
         
