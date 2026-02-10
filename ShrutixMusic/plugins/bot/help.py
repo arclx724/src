@@ -1,6 +1,7 @@
 from typing import Union
 from pyrogram import filters, types
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+import types as py_types
 
 from ShrutixMusic import nand
 from ShrutixMusic.utils.database import get_lang
@@ -14,18 +15,44 @@ from ShrutixMusic.utils.inline.help import (
 from config import BANNED_USERS, START_IMG_URL
 from strings import get_string
 
-# --- TRY IMPORTING HELPERS ---
+# --- IMPORT HELPERS MODULE SAFELY ---
 try:
-    from strings import helpers
+    import strings.helpers as helpers_module
 except ImportError:
-    helpers = {}
+    try:
+        from strings import helpers as helpers_module
+    except ImportError:
+        helpers_module = None
 
-# --- FALLBACK BUTTONS LIST (Agar automatic buttons na mile toh ye dikhenge) ---
+# Fallback agar file khali mile
 FALLBACK_COMMANDS = [
     "admin", "auth", "broadcast", "blacklist", "gban", "loop", 
     "ping", "play", "playlist", "shuffle", "seek", "speed", 
     "telegraph", "video", "tools"
 ]
+
+# --- FUNCTION TO EXTRACT DICTIONARY FROM MODULE ---
+def get_helpers_dict():
+    if not helpers_module:
+        return {}
+    
+    # 1. Agar helpers_module already dict hai
+    if isinstance(helpers_module, dict):
+        return helpers_module
+    
+    # 2. Agar module hai, to uske andar 'HELPERS' ya 'helpers' dhoondho
+    if isinstance(helpers_module, py_types.ModuleType):
+        if hasattr(helpers_module, "HELPERS") and isinstance(helpers_module.HELPERS, dict):
+            return helpers_module.HELPERS
+        if hasattr(helpers_module, "helpers") and isinstance(helpers_module.helpers, dict):
+            return helpers_module.helpers
+            
+        # 3. Fallback: Koi bhi dictionary dhoondho jo module me ho
+        for name, val in vars(helpers_module).items():
+            if not name.startswith("_") and isinstance(val, dict) and len(val) > 0:
+                 return val
+
+    return {}
 
 # ======================================================
 # 1. MAIN HELP COMMAND (Shows 2 Buttons)
@@ -57,24 +84,22 @@ async def helper_private(client, update: Union[types.Message, types.CallbackQuer
         )
 
 # ======================================================
-# 2. MUSIC MANAGEMENT CLICKED (Buttons Fix Here)
+# 2. MUSIC MANAGEMENT CLICKED (Buttons Load Here)
 # ======================================================
 @nand.on_callback_query(filters.regex("help_domain_music") & ~BANNED_USERS)
 @languageCB
 async def help_music_domain(client, CallbackQuery, _):
-    global helpers
+    # Dictionary fetch karo
+    help_dict = get_helpers_dict()
     
-    # Step 1: Check agar helpers dictionary mein data hai
-    if helpers and isinstance(helpers, dict) and len(helpers) > 0:
-        command_list = list(helpers.keys())
+    # Keys ki list banao
+    if help_dict:
+        command_list = list(help_dict.keys())
     else:
-        # Step 2: Agar empty hai, to FALLBACK list use karo (Buttons wapas layega)
         command_list = FALLBACK_COMMANDS
 
     keyboard = []
     temp = []
-    
-    # Buttons Create Karna
     for count, key in enumerate(command_list):
         if count % 3 == 0 and count > 0:
             keyboard.append(temp)
@@ -82,7 +107,6 @@ async def help_music_domain(client, CallbackQuery, _):
         temp.append(InlineKeyboardButton(text=key.title(), callback_data=f"help_callback {key}"))
     keyboard.append(temp)
     
-    # Back Button Add Karna
     keyboard.append([InlineKeyboardButton(text=_["BACK_BUTTON"], callback_data="settings_back_helper")])
     
     await CallbackQuery.edit_message_text(
@@ -102,26 +126,26 @@ async def help_security_domain(client, CallbackQuery, _):
     )
 
 # ======================================================
-# 4. HANDLE MUSIC SUB-MODULES (Clicking inside buttons)
+# 4. HANDLE MUSIC SUB-MODULES (Fix Applied Here)
 # ======================================================
 @nand.on_callback_query(filters.regex(r"help_callback") & ~BANNED_USERS)
 @languageCB
 async def helper_cb(client, CallbackQuery, _):
-    global helpers
-    
+    # Yahan bhi dictionary fetch karo
+    help_dict = get_helpers_dict()
+
     callback_data = CallbackQuery.data.strip()
     cb = callback_data.split(None, 1)[1]
     keyboard = help_back_markup(_)
     
-    # Agar dictionary mein text hai to dikhao, warna placeholder text
-    if helpers and cb in helpers:
+    # Ab 'cb in help_dict' check karega, 'module' error nahi aayega
+    if cb in help_dict:
         await CallbackQuery.edit_message_text(
-            helpers[cb], reply_markup=keyboard
+            help_dict[cb], reply_markup=keyboard
         )
     else:
-        # Agar text load nahi hua par button daba diya
         await CallbackQuery.edit_message_text(
-            f"**{cb.title()} Commands**\n\n(Help text not found via auto-load, but module exists.)",
+            f"**{cb.title()} Commands**\n\n(Help text not found inside strings file.)",
             reply_markup=keyboard
         )
 
