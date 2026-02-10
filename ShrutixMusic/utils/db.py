@@ -82,3 +82,44 @@ async def get_whitelisted_users(chat_id: int):
     doc = await nukedb.find_one({"chat_id": chat_id})
     return doc.get("whitelist", []) if doc else []
     
+# ==========================================================
+# ANTI-NSFW DATABASE
+# ==========================================================
+nsfwdb = mongodb.nsfw
+apidb = mongodb.nsfw_api
+
+# --- Group Settings ---
+async def set_antinsfw_status(chat_id: int, status: bool):
+    await nsfwdb.update_one(
+        {"chat_id": chat_id},
+        {"$set": {"status": status}},
+        upsert=True
+    )
+
+async def is_antinsfw_enabled(chat_id: int) -> bool:
+    doc = await nsfwdb.find_one({"chat_id": chat_id})
+    return doc.get("status", False) if doc else False
+
+# --- API Key Management (Rotation) ---
+async def add_nsfw_api(api_user: str, api_secret: str):
+    await apidb.insert_one({
+        "api_user": api_user,
+        "api_secret": api_secret,
+        "usage": 0
+    })
+
+async def get_nsfw_api():
+    # Get random key or least used key
+    doc = await apidb.find_one({}, sort=[("usage", 1)])
+    if doc:
+        # Increment usage
+        await apidb.update_one({"_id": doc["_id"]}, {"$inc": {"usage": 1}})
+        return doc
+    return None
+
+async def remove_nsfw_api(api_user: str):
+    await apidb.delete_one({"api_user": api_user})
+
+async def get_all_nsfw_apis_count():
+    return await apidb.count_documents({})
+    
