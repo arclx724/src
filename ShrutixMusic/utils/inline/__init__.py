@@ -6,7 +6,8 @@ from .help import (
     security_help_panel,
     security_back_markup,
 )
-from .play import track_markup, stream_markup, telegram_markup
+# Update line below to include close_markup
+from .play import track_markup, stream_markup, telegram_markup, close_markup
 from .playlist import botplaylist_markup
 from .queue import queue_markup, queue_back_markup
 from .settings import audio_quality_markup, cleanmode_settings_markup, auth_users_markup, playmode_users_markup
