@@ -1,7 +1,7 @@
 import time
 from pyrogram import filters
 from pyrogram.types import ChatPermissions, Message
-from pyrogram.enums import ChatMemberStatus, ChatMemberPermission
+from pyrogram.enums import ChatMemberStatus  # ChatMemberPermission hata diya
 
 from ShrutixMusic import nand  # Your bot client
 from ShrutixMusic.core.mongo import mongodb  # MongoDB instance
