@@ -10,9 +10,11 @@ from ShrutixMusic.utils.inline.help import (
     security_help_panel,
     security_back_markup
 )
+# Start Menu wale buttons import kiye
+from ShrutixMusic.utils.inline import private_panel
 from config import BANNED_USERS, START_IMG_URL
 
-# --- 1. HARDCODED HELP TEXT (Taaki text kabhi gayab na ho) ---
+# --- HARDCODED HELP TEXT ---
 FALLBACK_HELP_DICT = {
     "admin": "**⭐️ Admin Commands:**\n\n• /pause - Pause the playing music.\n• /resume - Resume the paused music.\n• /skip - Skip the current track.\n• /stop - Stop the music and clear queue.\n• /queue - Check the current queue.",
     "auth": "**🛡️ Auth Users:**\n\nAuthorized users can use admin commands without admin rights.\n\n• /auth [Username] - Add user to auth list.\n• /unauth [Username] - Remove user.\n• /authusers - List auth users.",
@@ -61,12 +63,34 @@ async def helper_private(client, update: Union[types.Message, types.CallbackQuer
         )
 
 # ======================================================
-# 2. MUSIC MANAGEMENT BUTTONS
+# 2. BACK TO START MENU (YE FIX HAI)
+# ======================================================
+@nand.on_callback_query(filters.regex("settings_back_home") & ~BANNED_USERS)
+@LanguageStart
+async def back_to_home_flash(client, CallbackQuery, _):
+    try:
+        await CallbackQuery.answer()
+    except:
+        pass
+    
+    # Start Menu ke buttons load karo
+    out = private_panel(_)
+    
+    # Start Message ka Text format karo
+    text = _["start_2"].format(CallbackQuery.from_user.mention, nand.mention)
+    
+    # Message ko Edit karke wapas Start Menu bana do
+    await CallbackQuery.edit_message_caption(
+        caption=text,
+        reply_markup=InlineKeyboardMarkup(out)
+    )
+
+# ======================================================
+# 3. MUSIC MANAGEMENT BUTTONS
 # ======================================================
 @nand.on_callback_query(filters.regex("help_domain_music") & ~BANNED_USERS)
 @languageCB
 async def help_music_domain(client, CallbackQuery, _):
-    # Hum seedha upar wale dictionary se keys uthayenge
     command_list = list(FALLBACK_HELP_DICT.keys())
     
     keyboard = []
@@ -75,11 +99,9 @@ async def help_music_domain(client, CallbackQuery, _):
         if count % 3 == 0 and count > 0:
             keyboard.append(temp)
             temp = []
-        # Button ka text Title Case me hoga (e.g. "Admin")
         temp.append(InlineKeyboardButton(text=key.title(), callback_data=f"help_callback {key}"))
     keyboard.append(temp)
     
-    # Back button
     keyboard.append([InlineKeyboardButton(text=_["BACK_BUTTON"], callback_data="settings_back_helper")])
     
     await CallbackQuery.edit_message_text(
@@ -88,7 +110,7 @@ async def help_music_domain(client, CallbackQuery, _):
     )
 
 # ======================================================
-# 3. GROUP MANAGEMENT
+# 4. GROUP MANAGEMENT
 # ======================================================
 @nand.on_callback_query(filters.regex("help_domain_security") & ~BANNED_USERS)
 @languageCB
@@ -99,30 +121,28 @@ async def help_security_domain(client, CallbackQuery, _):
     )
 
 # ======================================================
-# 4. SHOW COMMAND TEXT (Music) - FIX IS HERE
+# 5. SHOW COMMAND TEXT
 # ======================================================
 @nand.on_callback_query(filters.regex(r"help_callback") & ~BANNED_USERS)
 @languageCB
 async def helper_cb(client, CallbackQuery, _):
     callback_data = CallbackQuery.data.strip()
-    cb = callback_data.split(None, 1)[1].lower() # .lower() lagaya taaki case match kare
+    cb = callback_data.split(None, 1)[1].lower()
     
     keyboard = help_back_markup(_)
     
-    # Check karein agar command hamare Dictionary me hai
     if cb in FALLBACK_HELP_DICT:
         await CallbackQuery.edit_message_text(
             FALLBACK_HELP_DICT[cb], reply_markup=keyboard
         )
     else:
-        # Fallback agar kuch miss ho gaya
         await CallbackQuery.edit_message_text(
             f"**{cb.title()} Commands**\n\nComing soon!",
             reply_markup=keyboard
         )
 
 # ======================================================
-# 5. SECURITY SUB-MODULES
+# 6. SECURITY SUB-MODULES
 # ======================================================
 @nand.on_callback_query(filters.regex(r"help_cmd_") & ~BANNED_USERS)
 @languageCB
@@ -192,4 +212,4 @@ async def security_helper_cb(client, CallbackQuery, _):
         )
 
     await CallbackQuery.edit_message_text(text, reply_markup=keyboard)
-    
+                             
