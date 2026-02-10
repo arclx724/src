@@ -2,34 +2,33 @@ from typing import Union
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from ShrutixMusic import nand
-from config import SUPPORT_CHAT
+from config import SUPPORT_CHAT, START_IMG_URL
 
-# --- 1. MAIN MENU (The 2 Buttons) ---
+# --- 1. MAIN MENU (Vertical Buttons + Back) ---
 def private_help_panel(_):
     buttons = [
         [
             InlineKeyboardButton(
-                text="🎸 Music Management", callback_data="help_domain_music"
-            ),
-            InlineKeyboardButton(
-                text="🛡️ Group Management", callback_data="help_domain_security"
+                text="🎸 Music Management", 
+                callback_data="help_domain_music"
             ),
         ],
         [
             InlineKeyboardButton(
-                text=_["CLOSE_BUTTON"], callback_data="close"
+                text="🛡️ Group Management", 
+                callback_data="help_domain_security"
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text=_["BACK_BUTTON"], # Yahan ab 'Back' likha aayega
+                callback_data="close"  # Kaam Close ka karega (kyunki isse peeche kuch nahi hai)
             )
         ],
     ]
     return buttons
 
-# --- FIX: OLD FUNCTION NAME MAPPING ---
-# Ye function start.py dhoondh raha tha, isliye crash hua.
-# Hum ise private_help_panel se connect kar denge.
-def help_pannel(_, update):
-    return private_help_panel(_)
-
-# --- 2. BACK BUTTON ---
+# --- 2. BACK BUTTON FOR SUB-MENUS ---
 def help_back_markup(_):
     return InlineKeyboardMarkup(
         [
@@ -45,7 +44,7 @@ def help_back_markup(_):
         ]
     )
 
-# --- 3. SECURITY MENU ---
+# --- 3. SECURITY MENU (Vertical/Grid) ---
 def security_help_panel(_):
     buttons = [
         [
