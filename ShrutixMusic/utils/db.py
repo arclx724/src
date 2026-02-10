@@ -141,3 +141,21 @@ async def is_antiedit_enabled(chat_id: int) -> bool:
     doc = await antieditdb.find_one({"chat_id": chat_id})
     return doc.get("status", False) if doc else False
 
+# ==========================================================
+# ANTI-BOT DATABASE
+# ==========================================================
+antibotdb = mongodb.antibot
+
+async def set_antibot_status(chat_id: int, status: bool):
+    """Enable or Disable Anti-Bot"""
+    await antibotdb.update_one(
+        {"chat_id": chat_id},
+        {"$set": {"status": status}},
+        upsert=True
+    )
+
+async def is_antibot_enabled(chat_id: int) -> bool:
+    """Check if enabled"""
+    doc = await antibotdb.find_one({"chat_id": chat_id})
+    return doc.get("status", False) if doc else False
+    
