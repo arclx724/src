@@ -50,16 +50,16 @@ def help_back_markup(_):
 def security_help_panel(_):
     buttons = [
         [
-            InlineKeyboardButton(text="☢️ Anti-Nuke", callback_data="help_cmd_antinuke"),
-            InlineKeyboardButton(text="🤖 Anti-Bot", callback_data="help_cmd_antibot"),
+            InlineKeyboardButton(text="☢️ Anti Cheater", callback_data="help_cmd_antinuke"),
+            InlineKeyboardButton(text="🤖 Anti Bots", callback_data="help_cmd_antibot"),
         ],
         [
-            InlineKeyboardButton(text="🤬 Anti-Abuse", callback_data="help_cmd_abuse"),
-            InlineKeyboardButton(text="🔞 Anti-NSFW", callback_data="help_cmd_antinsfw"),
+            InlineKeyboardButton(text="🤬 Abuse Guardian", callback_data="help_cmd_abuse"),
+            InlineKeyboardButton(text="🔞 NSFW Remover", callback_data="help_cmd_antinsfw"),
         ],
         [
-            InlineKeyboardButton(text="✏️ Anti-Edit", callback_data="help_cmd_antiedit"),
-            InlineKeyboardButton(text="🗑️ Auto-Delete", callback_data="help_cmd_autodelete"),
+            InlineKeyboardButton(text="✏️ Edit Guardian", callback_data="help_cmd_antiedit"),
+            InlineKeyboardButton(text="🗑️ Media Guardian", callback_data="help_cmd_autodelete"),
         ],
         [
             InlineKeyboardButton(text="👮‍♂️ Admin Tool", callback_data="help_cmd_management"),
