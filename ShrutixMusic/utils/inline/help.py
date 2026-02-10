@@ -4,7 +4,7 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from ShrutixMusic import nand
 from config import SUPPORT_CHAT
 
-# --- 1. MAIN MENU (Vertical Buttons + Back to Home) ---
+# --- 1. MAIN MENU (Music/Group Buttons + Back to Home) ---
 def private_help_panel(_):
     buttons = [
         [
@@ -21,8 +21,8 @@ def private_help_panel(_):
         ],
         [
             InlineKeyboardButton(
-                text=_["BACK_BUTTON"], # "Back" Button
-                callback_data="settings_back_home" # Ye Home/Start par le jayega
+                text=_["BACK_BUTTON"], # Back -> Home (Start)
+                callback_data="settings_back_home"
             )
         ],
     ]
@@ -32,21 +32,21 @@ def private_help_panel(_):
 def help_pannel(_, update):
     return private_help_panel(_)
 
-# --- 2. BACK BUTTON FOR SUB-MENUS (Music Management ke andar) ---
-# Yahan se Close button hata diya gaya hai.
+# --- 2. BACK BUTTON FOR MUSIC TEXT PAGES ---
+# (Yeh button Text Page par dikhega, aur click karne par wapas Grid/Buttons par le jayega)
 def help_back_markup(_):
     return InlineKeyboardMarkup(
         [
             [
                 InlineKeyboardButton(
                     text=_["BACK_BUTTON"],
-                    callback_data="settings_back_helper",
+                    callback_data="help_domain_music", # Ye Grid wapas layega
                 )
             ]
         ]
     )
 
-# --- 3. SECURITY MENU (Group Management Main Page) ---
+# --- 3. SECURITY MENU GRID ---
 def security_help_panel(_):
     buttons = [
         [
@@ -70,8 +70,7 @@ def security_help_panel(_):
     ]
     return buttons
 
-# --- 4. SECURITY BACK BUTTON (Group Management ke andar) ---
-# Yahan se bhi Close button hata diya gaya hai.
+# --- 4. BACK BUTTON FOR SECURITY TEXT PAGES ---
 def security_back_markup(_):
     return InlineKeyboardMarkup(
         [
