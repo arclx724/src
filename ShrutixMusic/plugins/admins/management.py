@@ -3,7 +3,8 @@ from pyrogram import filters
 from pyrogram.enums import ChatMemberStatus
 from pyrogram.types import ChatPermissions
 from pyrogram.types import Message, ChatPrivileges
-from ShrutixMusic import nand, mongodb
+from ShrutixMusic import nand
+from ShrutixMusic.core.mongo import db
 
 # ---------------- CONFIG ---------------- #
 
@@ -11,7 +12,7 @@ BAN_LIMIT = 5
 KICK_LIMIT = 10
 RESET_TIME = 86400  # 24 hours
 
-limits = mongodb.admin_limits
+limits = db.admin_limits
 
 ERROR_TEXT = "I don't know who you're talking about, you're going to need to specify a user...!"
 
