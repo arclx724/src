@@ -15,7 +15,7 @@ BOT_TOKEN = getenv("BOT_TOKEN")
 
 # --- NEWLY ADDED FOR FEATURES ---
 # Bot Username (without @) required for button links
-BOT_USERNAME = getenv("BOT_USERNAME", "ShrutiMusicBot")
+BOT_USERNAME = getenv("BOT_USERNAME", "BillieMusicbot")
 # AI Key for Anti-Abuse (Get from https://openrouter.ai/)
 OPENROUTER_API_KEY = getenv("OPENROUTER_API_KEY", "")
 # --------------------------------
@@ -46,8 +46,8 @@ GIT_TOKEN = getenv(
     "GIT_TOKEN", None
 )  # Fill this variable if your upstream repository is private
 
-SUPPORT_CHANNEL = getenv("SUPPORT_CHANNEL", "https://t.me/ShrutiBots")
-SUPPORT_CHAT = getenv("SUPPORT_CHAT", "https://t.me/ShrutiBotSupport")
+SUPPORT_CHANNEL = getenv("SUPPORT_CHANNEL", "https://t.me/fakeAaru")
+SUPPORT_CHAT = getenv("SUPPORT_CHAT", "https://t.me/fakeAaru")
 
 # Set this to True if you want the assistant to automatically leave chats after an interval
 AUTO_LEAVING_ASSISTANT = bool(getenv("AUTO_LEAVING_ASSISTANT", False))
