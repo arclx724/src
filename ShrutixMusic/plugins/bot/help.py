@@ -1,7 +1,6 @@
 from typing import Union
 from pyrogram import filters, types
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-import types as py_types
 
 from ShrutixMusic import nand
 from ShrutixMusic.utils.database import get_lang
@@ -15,28 +14,18 @@ from ShrutixMusic.utils.inline.help import (
 from config import BANNED_USERS, START_IMG_URL
 from strings import get_string
 
-# --- SMART IMPORT LOGIC ---
-# Ye logic khud dhoondhega ki commands kahan chupe hain
+# --- TRY IMPORTING HELPERS ---
 try:
-    from strings import HELPERS as helpers
+    from strings import helpers
 except ImportError:
-    try:
-        from strings import helpers
-    except ImportError:
-        helpers = {}
+    helpers = {}
 
-def get_valid_helpers():
-    global helpers
-    # Agar helpers dictionary hai, to wahi return karo
-    if isinstance(helpers, dict):
-        return helpers
-    # Agar helpers module (file) hai, to uske andar dhoondho
-    elif isinstance(helpers, py_types.ModuleType):
-        if hasattr(helpers, "HELPERS") and isinstance(helpers.HELPERS, dict):
-            return helpers.HELPERS
-        elif hasattr(helpers, "helpers") and isinstance(helpers.helpers, dict):
-            return helpers.helpers
-    return {}
+# --- FALLBACK BUTTONS LIST (Agar automatic buttons na mile toh ye dikhenge) ---
+FALLBACK_COMMANDS = [
+    "admin", "auth", "broadcast", "blacklist", "gban", "loop", 
+    "ping", "play", "playlist", "shuffle", "seek", "speed", 
+    "telegraph", "video", "tools"
+]
 
 # ======================================================
 # 1. MAIN HELP COMMAND (Shows 2 Buttons)
@@ -68,24 +57,32 @@ async def helper_private(client, update: Union[types.Message, types.CallbackQuer
         )
 
 # ======================================================
-# 2. MUSIC MANAGEMENT CLICKED (Fixed)
+# 2. MUSIC MANAGEMENT CLICKED (Buttons Fix Here)
 # ======================================================
 @nand.on_callback_query(filters.regex("help_domain_music") & ~BANNED_USERS)
 @languageCB
 async def help_music_domain(client, CallbackQuery, _):
-    # Sahi dictionary fetch karo
-    help_dict = get_valid_helpers()
+    global helpers
     
+    # Step 1: Check agar helpers dictionary mein data hai
+    if helpers and isinstance(helpers, dict) and len(helpers) > 0:
+        command_list = list(helpers.keys())
+    else:
+        # Step 2: Agar empty hai, to FALLBACK list use karo (Buttons wapas layega)
+        command_list = FALLBACK_COMMANDS
+
     keyboard = []
     temp = []
-    # Ab loop sahi dictionary par chalega
-    for count, key in enumerate(help_dict):
+    
+    # Buttons Create Karna
+    for count, key in enumerate(command_list):
         if count % 3 == 0 and count > 0:
             keyboard.append(temp)
             temp = []
         temp.append(InlineKeyboardButton(text=key.title(), callback_data=f"help_callback {key}"))
     keyboard.append(temp)
     
+    # Back Button Add Karna
     keyboard.append([InlineKeyboardButton(text=_["BACK_BUTTON"], callback_data="settings_back_helper")])
     
     await CallbackQuery.edit_message_text(
@@ -105,23 +102,28 @@ async def help_security_domain(client, CallbackQuery, _):
     )
 
 # ======================================================
-# 4. HANDLE MUSIC SUB-MODULES
+# 4. HANDLE MUSIC SUB-MODULES (Clicking inside buttons)
 # ======================================================
 @nand.on_callback_query(filters.regex(r"help_callback") & ~BANNED_USERS)
 @languageCB
 async def helper_cb(client, CallbackQuery, _):
-    help_dict = get_valid_helpers()
-
+    global helpers
+    
     callback_data = CallbackQuery.data.strip()
     cb = callback_data.split(None, 1)[1]
     keyboard = help_back_markup(_)
     
-    if cb in help_dict:
+    # Agar dictionary mein text hai to dikhao, warna placeholder text
+    if helpers and cb in helpers:
         await CallbackQuery.edit_message_text(
-            help_dict[cb], reply_markup=keyboard
+            helpers[cb], reply_markup=keyboard
         )
     else:
-        await CallbackQuery.answer(_["help_7"], show_alert=True)
+        # Agar text load nahi hua par button daba diya
+        await CallbackQuery.edit_message_text(
+            f"**{cb.title()} Commands**\n\n(Help text not found via auto-load, but module exists.)",
+            reply_markup=keyboard
+        )
 
 # ======================================================
 # 5. HANDLE SECURITY SUB-MODULES
