@@ -1,11 +1,12 @@
-from pyrogram import Client, filters
+from pyrogram import filters
 from pyrogram.enums import ChatMemberStatus
 from pyrogram.types import Message
+from ShrutixMusic import nand   # ✅ IMPORTANT
 
 ERROR_TEXT = "I don't know who you're talking about, you're going to need to specify a user...!"
 
 
-async def extract_target_and_title(client: Client, message: Message):
+async def extract_target_and_title(client, message: Message):
     target = None
     title = None
 
@@ -26,22 +27,12 @@ async def extract_target_and_title(client: Client, message: Message):
     return target, title
 
 
-async def check_bot_rights(client: Client, chat_id: int):
-    bot = await client.get_me()
-    bot_member = await client.get_chat_member(chat_id, bot.id)
-    return bot_member.status == ChatMemberStatus.ADMINISTRATOR
-
-
-@Client.on_message(filters.command("promote") & filters.group)
-async def promote_handler(client: Client, message: Message):
+@nand.on_message(filters.command("promote") & filters.group)
+async def promote_handler(client, message: Message):
 
     target, title = await extract_target_and_title(client, message)
     if not target:
         return await message.reply(ERROR_TEXT)
-
-    # 🔥 BOT RIGHTS CHECK
-    if not await check_bot_rights(client, message.chat.id):
-        return await message.reply("❌ Mujhe admin banao aur **Add Admins** permission do.")
 
     issuer = await client.get_chat_member(message.chat.id, message.from_user.id)
     if issuer.status not in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]:
@@ -75,15 +66,12 @@ async def promote_handler(client: Client, message: Message):
     await message.reply(f"✅ {target.mention} promoted successfully.")
 
 
-@Client.on_message(filters.command("demote") & filters.group)
-async def demote_handler(client: Client, message: Message):
+@nand.on_message(filters.command("demote") & filters.group)
+async def demote_handler(client, message: Message):
 
     target, _ = await extract_target_and_title(client, message)
     if not target:
         return await message.reply(ERROR_TEXT)
-
-    if not await check_bot_rights(client, message.chat.id):
-        return await message.reply("❌ Mujhe admin banao aur **Add Admins** permission do.")
 
     issuer = await client.get_chat_member(message.chat.id, message.from_user.id)
     if issuer.status not in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]:
