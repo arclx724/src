@@ -1,5 +1,5 @@
 import math
-from pyrogram.types import InlineKeyboardButton
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from ShrutixMusic.utils.formatters import time_to_seconds
 
@@ -82,6 +82,18 @@ def telegram_markup(_, chat_id):
                 callback_data=f"close",
             )
         ],
+    ]
+    return buttons
+
+# --- NEWLY ADDED FUNCTION ---
+def close_markup(_):
+    buttons = [
+        [
+            InlineKeyboardButton(
+                text=_["CLOSE_BUTTON"],
+                callback_data="close",
+            )
+        ]
     ]
     return buttons
     
