@@ -17,43 +17,36 @@ from config import BANNED_USERS, START_IMG_URL
 
 # --- HARDCODED HELP TEXT ---
 FALLBACK_HELP_DICT = {
-    "admin": "⭐️ **Admin Commands:**\n\n• /pause - Pause the playing music.\n• /resume - Resume the paused music.\n• /skip - Skip the current track.\n• /stop - Stop the music and clear queue.\n• /queue - Check the current queue.",
-    "auth": "🛡️ **Auth Users:**\n\nAuthorized users can use admin commands without admin rights.\n\n• /auth [Username] - Add user to auth list.\n• /unauth [Username] - Remove user.\n• /authusers - List auth users.",
-    "broadcast": "**📢 Broadcast:**\n\n• /broadcast [Message] - Send message to all chats.\n• /broadcast_pin - Pin the broadcasted message.",
-    "blacklist": "**🚫 Blacklist Chat:**\n\n• /blacklistchat [Chat ID] - Block bot usage in a chat.\n• /whitelistchat [Chat ID] - Unblock chat.",
-    "gban": "**🌍 Global Ban:**\n\n• /gban [User] - Ban user from all bot chats.\n• /ungban [User] - Unban user.",
-    "loop": "**🔁 Loop Stream:**\n\n• /loop [enable/disable] - Toggle loop.\n• /loop [1-10] - Loop specific times.",
-    "ping": "**🏓 Ping & Stats:**\n\n• /ping - Check bot latency and uptime.\n• /stats - Check system statistics.",
-    "play": "**▶️ Play Commands:**\n\n• /play [Song] - Play audio.\n• /vplay [Song] - Play video.\n• /playforce - Force play immediately.\n• /slider - Play slider query.",
-    "playlist": "**📜 Playlist:**\n\n• /playlist - Check your saved playlist.\n• /delplaylist - Delete playlist.\n• /play - Play your playlist.",
-    "shuffle": "**🔀 Shuffle:**\n\n• /shuffle - Shuffle the queue.",
-    "seek": "**⏩ Seek:**\n\n• /seek [Seconds] - Forward stream.\n• /seekback [Seconds] - Rewind stream.",
-    "speed": "**⚡ Speed:**\n\n• /speed [0.5/1.5/2.0] - Change playback speed.",
-    "telegraph": "**🌐 Telegraph:**\n\n• /tgm - Upload replied media to Telegraph link.",
-    "video": "**📹 Video Download:**\n\n• /video [Song] - Download video from YouTube.",
-    "tools": "**🔧 Tools:**\n\n• /language - Change bot language.\n• /settings - Open bot settings."
+    "admin": "⭐️ **Admin Commands:**\n\n• /pause\n• /resume\n• /skip\n• /stop\n• /queue",
+    "auth": "🛡️ **Auth Users:**\n\n• /auth\n• /unauth\n• /authusers",
+    "broadcast": "📢 **Broadcast:**\n\n• /broadcast\n• /broadcast_pin",
+    "blacklist": "🚫 **Blacklist Chat:**\n\n• /blacklistchat\n• /whitelistchat",
+    "gban": "🌍 **Global Ban:**\n\n• /gban\n• /ungban",
+    "loop": "🔁 **Loop:**\n\n• /loop",
+    "ping": "🏓 **Ping & Stats:**\n\n• /ping\n• /stats",
+    "play": "▶️ **Play:**\n\n• /play\n• /vplay\n• /playforce",
+    "playlist": "📜 **Playlist:**\n\n• /playlist\n• /delplaylist",
+    "shuffle": "🔀 **Shuffle:**\n\n• /shuffle",
+    "seek": "⏩ **Seek:**\n\n• /seek\n• /seekback",
+    "speed": "⚡ **Speed:**\n\n• /speed",
+    "telegraph": "🌐 **Telegraph:**\n\n• /tgm",
+    "video": "📹 **Video:**\n\n• /video",
+    "tools": "🔧 **Tools:**\n\n• /language\n• /settings"
 }
 
 # ======================================================
-# 1. MAIN HELP COMMAND
+# 1. MAIN HELP
 # ======================================================
-@nand.on_message(filters.command(["help"]) & filters.private & ~BANNED_USERS)
+@nand.on_message(filters.command("help") & filters.private & ~BANNED_USERS)
 @nand.on_callback_query(filters.regex("settings_back_helper") & ~BANNED_USERS)
 @LanguageStart
 async def helper_private(client, update: Union[types.Message, types.CallbackQuery], _):
-    is_callback = isinstance(update, types.CallbackQuery)
-
-    if is_callback:
+    if isinstance(update, types.CallbackQuery):
         try:
             await update.answer()
-        except:
-            pass
-
-        keyboard = InlineKeyboardMarkup(private_help_panel(_))
-        try:
             await update.edit_message_text(
                 _["help_2"],
-                reply_markup=keyboard,
+                reply_markup=InlineKeyboardMarkup(private_help_panel(_)),
                 parse_mode=ParseMode.MARKDOWN
             )
         except MessageNotModified:
@@ -63,63 +56,53 @@ async def helper_private(client, update: Union[types.Message, types.CallbackQuer
             await update.delete()
         except:
             pass
-
-        keyboard = InlineKeyboardMarkup(private_help_panel(_))
         await update.reply_photo(
             photo=START_IMG_URL,
             caption=_["help_2"],
-            reply_markup=keyboard
+            reply_markup=InlineKeyboardMarkup(private_help_panel(_))
         )
 
 # ======================================================
-# 2. BACK TO START MENU
+# 2. BACK TO HOME
 # ======================================================
 @nand.on_callback_query(filters.regex("settings_back_home") & ~BANNED_USERS)
 @LanguageStart
 async def back_to_home_flash(client, CallbackQuery, _):
     try:
         await CallbackQuery.answer()
-    except:
-        pass
-
-    out = private_panel(_)
-    text = _["start_2"].format(CallbackQuery.from_user.mention, nand.mention)
-
-    try:
         await CallbackQuery.edit_message_caption(
-            caption=text,
-            reply_markup=InlineKeyboardMarkup(out)
+            caption=_["start_2"].format(
+                CallbackQuery.from_user.mention, nand.mention
+            ),
+            reply_markup=InlineKeyboardMarkup(private_panel(_))
         )
     except MessageNotModified:
         pass
 
 # ======================================================
-# 3. MUSIC MANAGEMENT BUTTONS
+# 3. MUSIC DOMAIN
 # ======================================================
 @nand.on_callback_query(filters.regex("help_domain_music") & ~BANNED_USERS)
 @languageCB
 async def help_music_domain(client, CallbackQuery, _):
-    command_list = list(FALLBACK_HELP_DICT.keys())
-    keyboard, temp = [], []
-
-    for count, key in enumerate(command_list):
-        if count % 3 == 0 and count > 0:
-            keyboard.append(temp)
-            temp = []
-        temp.append(
+    keyboard, row = [], []
+    for i, key in enumerate(FALLBACK_HELP_DICT):
+        if i % 3 == 0 and row:
+            keyboard.append(row)
+            row = []
+        row.append(
             InlineKeyboardButton(
-                text=key.title(),
-                callback_data=f"help_callback {key}"
+                key.title(), callback_data=f"help_callback {key}"
             )
         )
-    keyboard.append(temp)
+    keyboard.append(row)
     keyboard.append(
-        [InlineKeyboardButton(text=_["BACK_BUTTON"], callback_data="settings_back_helper")]
+        [InlineKeyboardButton(_["BACK_BUTTON"], callback_data="settings_back_helper")]
     )
 
     try:
         await CallbackQuery.edit_message_text(
-            "🎸 **Music Management Commands**\n\nChoose a category below:",
+            "🎸 **Music Management Commands**",
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode=ParseMode.MARKDOWN
         )
@@ -127,14 +110,14 @@ async def help_music_domain(client, CallbackQuery, _):
         pass
 
 # ======================================================
-# 4. GROUP MANAGEMENT
+# 4. SECURITY DOMAIN
 # ======================================================
 @nand.on_callback_query(filters.regex("help_domain_security") & ~BANNED_USERS)
 @languageCB
 async def help_security_domain(client, CallbackQuery, _):
     try:
         await CallbackQuery.edit_message_text(
-            "🛡️ **Group Management Commands**\n\nChoose a category below:",
+            "🛡️ **Group Management Commands**",
             reply_markup=InlineKeyboardMarkup(security_help_panel(_)),
             parse_mode=ParseMode.MARKDOWN
         )
@@ -142,48 +125,93 @@ async def help_security_domain(client, CallbackQuery, _):
         pass
 
 # ======================================================
-# 5. SHOW COMMAND TEXT
+# 5. MUSIC HELP CALLBACK
 # ======================================================
-@nand.on_callback_query(filters.regex(r"help_callback") & ~BANNED_USERS)
+@nand.on_callback_query(filters.regex("help_callback") & ~BANNED_USERS)
 @languageCB
 async def helper_cb(client, CallbackQuery, _):
-    cb = CallbackQuery.data.split(None, 1)[1].lower()
-    keyboard = help_back_markup(_)
-
+    cb = CallbackQuery.data.split(None, 1)[1]
     try:
         await CallbackQuery.edit_message_text(
-            FALLBACK_HELP_DICT.get(cb, f"**{cb.title()} Commands**\n\nComing soon!"),
-            reply_markup=keyboard,
+            FALLBACK_HELP_DICT.get(cb, "Coming soon"),
+            reply_markup=help_back_markup(_),
             parse_mode=ParseMode.MARKDOWN
         )
     except MessageNotModified:
         pass
 
 # ======================================================
-# 6. SECURITY SUB-MODULES
+# 6. SECURITY SUB MODULES
 # ======================================================
-@nand.on_callback_query(filters.regex(r"help_cmd_") & ~BANNED_USERS)
+@nand.on_callback_query(filters.regex("help_cmd_") & ~BANNED_USERS)
 @languageCB
 async def security_helper_cb(client, CallbackQuery, _):
     cmd = CallbackQuery.data.split("_")[2]
-    keyboard = security_back_markup(_)
     text = ""
 
     if cmd == "antinuke":
         text = (
             "🛡️ **Anti-Cheater System**\n\n"
             "Protects the group from cheaters and malicious admin actions.\n\n"
-            "• **Trigger:** 3 Suspicious Actions in 30 Seconds.\n"
-            "• **Action:** Instant Demotion.\n\n"
+            "• **Trigger:** 3 Suspicious Actions in 30 Seconds\n"
+            "• **Action:** Instant Demotion\n\n"
             "**Commands:**\n"
-            "• `/whitelist [Reply]` - Add trusted admin.\n"
-            "• `/unwhitelist [Reply]` - Remove trusted admin."
+            "• `/whitelist [Reply]`\n"
+            "• `/unwhitelist [Reply]`"
+        )
+
+    elif cmd == "antibot":
+        text = (
+            "🤖 **Anti-Bot System**\n\n"
+            "**Commands:**\n"
+            "• `/nobots on`\n"
+            "• `/nobots off`"
+        )
+
+    elif cmd == "abuse":
+        text = (
+            "🤬 **Anti-Abuse (AI)**\n\n"
+            "**Commands:**\n"
+            "• `/abuse on`\n"
+            "• `/abuse off`"
+        )
+
+    elif cmd == "antinsfw":
+        text = (
+            "🔞 **Anti-NSFW**\n\n"
+            "**Commands:**\n"
+            "• `/antinsfw on`\n"
+            "• `/antinsfw off`"
+        )
+
+    elif cmd == "antiedit":
+        text = (
+            "✏️ **Anti-Edit**\n\n"
+            "**Commands:**\n"
+            "• `/antiedit on`\n"
+            "• `/antiedit off`"
+        )
+
+    elif cmd == "autodelete":
+        text = (
+            "🗑️ **Auto Delete**\n\n"
+            "**Commands:**\n"
+            "• `/setdelay 30 s`"
+        )
+
+    elif cmd == "management":
+        text = (
+            "👮 **Group Management**\n\n"
+            "**Commands:**\n"
+            "• `/ban` / `/unban`\n"
+            "• `/kick`\n"
+            "• `/mute` / `/unmute`"
         )
 
     try:
         await CallbackQuery.edit_message_text(
             text,
-            reply_markup=keyboard,
+            reply_markup=security_back_markup(_),
             parse_mode=ParseMode.MARKDOWN
         )
     except MessageNotModified:
