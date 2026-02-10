@@ -23,7 +23,13 @@ def private_help_panel(_):
     ]
     return buttons
 
-# --- 2. BACK BUTTON (Wapas 2 Buttons pe jaane ke liye) ---
+# --- FIX: OLD FUNCTION NAME MAPPING ---
+# Ye function start.py dhoondh raha tha, isliye crash hua.
+# Hum ise private_help_panel se connect kar denge.
+def help_pannel(_, update):
+    return private_help_panel(_)
+
+# --- 2. BACK BUTTON ---
 def help_back_markup(_):
     return InlineKeyboardMarkup(
         [
@@ -39,7 +45,7 @@ def help_back_markup(_):
         ]
     )
 
-# --- 3. SECURITY MENU (Group Management Grid) ---
+# --- 3. SECURITY MENU ---
 def security_help_panel(_):
     buttons = [
         [
@@ -63,7 +69,7 @@ def security_help_panel(_):
     ]
     return buttons
 
-# --- 4. SECURITY TEXT BACK BUTTON ---
+# --- 4. SECURITY BACK BUTTON ---
 def security_back_markup(_):
     return InlineKeyboardMarkup(
         [
