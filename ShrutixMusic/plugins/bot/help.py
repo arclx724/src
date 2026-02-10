@@ -1,6 +1,7 @@
 from typing import Union
 from pyrogram import filters, types
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram.enums import ParseMode
 
 from ShrutixMusic import nand
 from ShrutixMusic.utils.decorators.language import LanguageStart, languageCB
@@ -49,7 +50,7 @@ async def helper_private(client, update: Union[types.Message, types.CallbackQuer
         await update.edit_message_text(
             _["help_2"],
             reply_markup=keyboard,
-            parse_mode="md"
+            parse_mode=ParseMode.MARKDOWN
         )
     else:
         try:
@@ -111,7 +112,7 @@ async def help_music_domain(client, CallbackQuery, _):
     await CallbackQuery.edit_message_text(
         "🎸 **Music Management Commands**\n\nChoose a category below:",
         reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode="md"
+        parse_mode=ParseMode.MARKDOWN
     )
 
 # ======================================================
@@ -123,7 +124,7 @@ async def help_security_domain(client, CallbackQuery, _):
     await CallbackQuery.edit_message_text(
         "🛡️ **Group Management Commands**\n\nChoose a category below:",
         reply_markup=InlineKeyboardMarkup(security_help_panel(_)),
-        parse_mode="md"
+        parse_mode=ParseMode.MARKDOWN
     )
 
 # ======================================================
@@ -141,13 +142,13 @@ async def helper_cb(client, CallbackQuery, _):
         await CallbackQuery.edit_message_text(
             FALLBACK_HELP_DICT[cb],
             reply_markup=keyboard,
-            parse_mode="md"
+            parse_mode=ParseMode.MARKDOWN
         )
     else:
         await CallbackQuery.edit_message_text(
             f"**{cb.title()} Commands**\n\nComing soon!",
             reply_markup=keyboard,
-            parse_mode="md"
+            parse_mode=ParseMode.MARKDOWN
         )
 
 # ======================================================
@@ -223,6 +224,7 @@ async def security_helper_cb(client, CallbackQuery, _):
     await CallbackQuery.edit_message_text(
         text,
         reply_markup=keyboard,
-        parse_mode="md"
+        parse_mode=ParseMode.MARKDOWN
     )
+
 
