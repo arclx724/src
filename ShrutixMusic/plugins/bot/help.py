@@ -153,7 +153,7 @@ async def security_helper_cb(client, CallbackQuery, _):
         text = (
             "🛡️ **Advanced Anti-Cheater System**\n\n"
             "This system works **automatically** to protect your group from mass-banning and abusive admin actions.\n\n"
-            "• **Trigger:** More than 10 kicks/bans in 24 hours\n"
+            "> • **Trigger:** More than 10 kicks/bans in 24 hours\n"
             "• **Action:** Instant Auto-Demotion\n"
             "• **Reset:** Limits reset every 24 hours\n\n"
             "⚠️ **Important Note:**\n"
@@ -217,6 +217,7 @@ async def security_helper_cb(client, CallbackQuery, _):
         )
     except MessageNotModified:
         pass
+
 
 
 
