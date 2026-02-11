@@ -150,16 +150,16 @@ async def security_helper_cb(client, CallbackQuery, _):
     text = ""
 
     if cmd == "antinuke":
-    text = (
-        "🛡️ **Advanced Anti Cheater System**\n\n"
-        "This system works **automatically** to protect your group from mass-kicking or banning and abusive admin actions.\n\n"
-        "• **Trigger:** More than 10 kicks/bans or removes in 24 hours\n"
-        "• **Action:** Instant Auto-Demotion\n"
-        "• **Reset:** Limits reset every 24 hours\n\n"
-        "⚠️ **Important Note:**\n"
-        "Only admins promoted via this bot can be auto-demoted. Use `/promote` and ensure the bot has 'Add Admin' permissions.\n\n"
-        "*Keeping your community safe from rogue admins!*"
-    )
+        text = (
+            "🛡️ **Advanced Anti-Cheater System**\n\n"
+            "This system works **automatically** to protect your group from mass-banning and abusive admin actions.\n\n"
+            "• **Trigger:** More than 10 kicks/bans in 24 hours\n"
+            "• **Action:** Instant Auto-Demotion\n"
+            "• **Reset:** Limits reset every 24 hours\n\n"
+            "⚠️ **Important Note:**\n"
+            "Only admins promoted via this bot can be auto-demoted. Use `/promote` and ensure the bot has 'Add Admin' permissions.\n\n"
+            "*Keeping your community safe from rogue admins!*"
+        )
 
     elif cmd == "antibot":
         text = (
@@ -217,4 +217,5 @@ async def security_helper_cb(client, CallbackQuery, _):
         )
     except MessageNotModified:
         pass
+
 
