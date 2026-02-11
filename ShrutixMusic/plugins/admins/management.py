@@ -21,10 +21,12 @@ from config import BANNED_USERS, OWNER_ID
 LOGGER = getLogger("ShrutixMusic")
 
 # ==========================================================
-# DATABASE LOGIC (ADAPTED FOR SHRUTIX)
+# DATABASE LOGIC
 # ==========================================================
 warnsdb = mongodb.warns
+limitsdb = mongodb.limits # New Collection for Limits
 
+# --- Warns Logic ---
 async def get_warn(chat_id, name):
     return await warnsdb.find_one({"chat_id": chat_id, "name": name})
 
@@ -36,11 +38,61 @@ async def add_warn(chat_id, name, warn):
 async def remove_warns(chat_id, name):
     await warnsdb.delete_many({"chat_id": chat_id, "name": name})
 
+# --- Ban/Kick Limit Logic (10 per 24h) ---
+BAN_LIMIT = 10
+BAN_WINDOW = 86400 # 24 Hours
+
+async def check_ban_limit(chat_id, user_id):
+    # 1. Check if User is Owner (Owner has NO LIMITS)
+    try:
+        member = await nand.get_chat_member(chat_id, user_id)
+        if member.status == enums.ChatMemberStatus.OWNER:
+            return True, 0 # Owner passes check
+    except:
+        pass
+
+    # 2. Check Database for Admins
+    now = time.time()
+    data = await limitsdb.find_one({"chat_id": chat_id, "admin_id": user_id})
+    history = data["history"] if data else []
+
+    # Filter timestamps older than 24h
+    valid_history = [t for t in history if now - t < BAN_WINDOW]
+
+    # Check Limit
+    if len(valid_history) >= BAN_LIMIT:
+        return False, len(valid_history) # Limit Reached
+
+    return True, len(valid_history)
+
+async def add_ban_log(chat_id, user_id):
+    # Owner ko log karne ki zaroorat nahi
+    try:
+        member = await nand.get_chat_member(chat_id, user_id)
+        if member.status == enums.ChatMemberStatus.OWNER:
+            return 
+    except:
+        pass
+
+    now = time.time()
+    data = await limitsdb.find_one({"chat_id": chat_id, "admin_id": user_id})
+    history = data["history"] if data else []
+    
+    # Clean old history first
+    valid_history = [t for t in history if now - t < BAN_WINDOW]
+    valid_history.append(now)
+
+    await limitsdb.update_one(
+        {"chat_id": chat_id, "admin_id": user_id},
+        {"$set": {"history": valid_history}},
+        upsert=True
+    )
+
 # ==========================================================
-# HELPERS & DECORATORS (Locally Defined to avoid Import Errors)
+# HELPERS & DECORATORS
 # ==========================================================
 
-SUDO = list(BANNED_USERS) # Using Banned set as placeholder or load sudoers if available
+SUDO = list(BANNED_USERS)
 COMMAND_HANDLER = ["/", "!"]
 
 def adminsOnly(permission):
@@ -55,7 +107,6 @@ def adminsOnly(permission):
                 if member.status not in [enums.ChatMemberStatus.OWNER, enums.ChatMemberStatus.ADMINISTRATOR]:
                     return await message.reply_text("❌ You are not an admin.")
                 
-                # Permission Check
                 if permission:
                     if getattr(member.privileges, permission, False):
                         return await func(client, message)
@@ -67,13 +118,10 @@ def adminsOnly(permission):
         return wrapper
     return sub_decorator
 
-# Dummy decorator for localization (since Shrutix logic differs)
 def use_chat_lang():
     def decorator(func):
         async def wrapper(client, message, *args, **kwargs):
-            # Simple strings wrapper
             def strings(key, **kwargs):
-                # Basic Fallback Strings
                 texts = {
                     "purge_no_reply": "Reply to a message to purge from.",
                     "purge_success": "Deleted {del_total} messages.",
@@ -152,7 +200,6 @@ async def extract_user_and_reason(message: Message, sender_chat=False):
         if len(parts) > 2:
             reason = parts[2]
         if not user_id and not message.reply_to_message: 
-             # If extraction failed but we have args, maybe arg 1 is user
              pass 
     elif message.reply_to_message:
         if len(message.command) > 1:
@@ -192,7 +239,7 @@ async def time_converter(message, time_val):
         return None
 
 # ==========================================================
-# COMMANDS (Ported Logic)
+# COMMANDS
 # ==========================================================
 
 # Purge CMD
@@ -224,7 +271,6 @@ async def purge(_, ctx: Message, strings):
         ):
             message_ids.append(message_id)
 
-            # Max message deletion limit is 100
             if len(message_ids) == 100:
                 await nand.delete_messages(
                     chat_id=chat_id,
@@ -246,7 +292,7 @@ async def purge(_, ctx: Message, strings):
         await ctx.reply_text(f"ERROR: {err}")
 
 
-# Kick members
+# Kick members (WITH LIMITS)
 @nand.on_message(filters.command(["kick", "dkick"]) & filters.group)
 @adminsOnly("can_restrict_members")
 @use_chat_lang()
@@ -256,10 +302,25 @@ async def kickFunc(client: Client, ctx: Message, strings):
         return await ctx.reply_text(strings("user_not_found"))
     if user_id == client.me.id:
         return await ctx.reply_text(strings("kick_self_err"))
+    
+    # Owner Immunity Check
+    try:
+        target_member = await ctx.chat.get_member(user_id)
+        if target_member.status == enums.ChatMemberStatus.OWNER:
+            return await ctx.reply_text("⚠️ You cannot kick the Owner!")
+    except:
+        pass
+
     if user_id in SUDO or user_id == OWNER_ID:
         return await ctx.reply_text(strings("kick_sudo_err"))
     if user_id in (await list_admins(ctx.chat.id)):
         return await ctx.reply_text(strings("kick_admin_err"))
+
+    # Limit Check
+    allowed, count = await check_ban_limit(ctx.chat.id, ctx.from_user.id)
+    if not allowed:
+        return await ctx.reply_text(f"⛔ Daily Limit Reached! You have used {count}/{BAN_LIMIT} actions (Kick/Ban) in the last 24 hours.")
+
     try:
         user = await nand.get_users(user_id)
     except PeerIdInvalid:
@@ -277,6 +338,8 @@ async def kickFunc(client: Client, ctx: Message, strings):
     try:
         await ctx.chat.ban_member(user_id)
         await ctx.reply_text(msg)
+        # Log Action
+        await add_ban_log(ctx.chat.id, ctx.from_user.id)
         await asyncio.sleep(1)
         await ctx.chat.unban_member(user_id)
     except ChatAdminRequired:
@@ -285,7 +348,7 @@ async def kickFunc(client: Client, ctx: Message, strings):
         await ctx.reply_text(str(e))
 
 
-# Ban/DBan/TBan User
+# Ban/DBan/TBan User (WITH LIMITS)
 @nand.on_message(filters.command(["ban", "dban", "tban"]) & filters.group)
 @adminsOnly("can_restrict_members")
 @use_chat_lang()
@@ -299,10 +362,24 @@ async def banFunc(client, message, strings):
         return await message.reply_text(strings("user_not_found"))
     if user_id == client.me.id:
         return await message.reply_text(strings("ban_self_err"))
+
+    # Owner Immunity Check
+    try:
+        target_member = await message.chat.get_member(user_id)
+        if target_member.status == enums.ChatMemberStatus.OWNER:
+            return await message.reply_text("⚠️ You cannot ban the Owner!")
+    except:
+        pass
+
     if user_id in SUDO or user_id == OWNER_ID:
         return await message.reply_text(strings("ban_sudo_err"))
     if user_id in (await list_admins(message.chat.id)):
         return await message.reply_text(strings("ban_admin_err"))
+
+    # Limit Check
+    allowed, count = await check_ban_limit(message.chat.id, message.from_user.id)
+    if not allowed:
+        return await message.reply_text(f"⛔ Daily Limit Reached! You have used {count}/{BAN_LIMIT} actions (Kick/Ban) in the last 24 hours.")
 
     try:
         mention = (await nand.get_users(user_id)).mention
@@ -332,6 +409,8 @@ async def banFunc(client, message, strings):
         try:
             await message.chat.ban_member(user_id, until_date=temp_ban)
             await message.reply_text(msg)
+            # Log Action
+            await add_ban_log(message.chat.id, message.from_user.id)
         except Exception as e:
             await message.reply_text(str(e))
         return
@@ -342,6 +421,8 @@ async def banFunc(client, message, strings):
     try:
         await message.chat.ban_member(user_id)
         await message.reply_text(msg, reply_markup=keyboard)
+        # Log Action
+        await add_ban_log(message.chat.id, message.from_user.id)
     except ChatAdminRequired:
         await message.reply("Please give me permission to banned members..!!!")
     except Exception as e:
@@ -390,7 +471,7 @@ async def deleteFunc(_, message, strings):
         await message.reply(strings("no_delete_perm"))
 
 
-# Promote Members
+# Promote Members (UPDATED: Title + Owner Immunity)
 @nand.on_message(filters.command(["promote", "fullpromote"]) & filters.group)
 @adminsOnly("can_promote_members")
 @use_chat_lang()
@@ -403,6 +484,14 @@ async def promoteFunc(client, message, strings):
     if not user_id:
         return await message.reply_text(strings("user_not_found"))
     
+    # Owner Check
+    try:
+        target_member = await message.chat.get_member(user_id)
+        if target_member.status == enums.ChatMemberStatus.OWNER:
+             return await message.reply_text("⚠️ User is already Owner.")
+    except:
+        pass
+
     me = await client.get_chat_member(message.chat.id, client.me.id)
     bot = me.privileges
 
@@ -412,6 +501,15 @@ async def promoteFunc(client, message, strings):
         return await message.reply_text("I'm not an admin in this chat.")
     if not bot.can_promote_members:
         return await message.reply_text(strings("no_promote_perm"))
+    
+    # Parse Title
+    title = None
+    if message.reply_to_message:
+        if len(message.command) > 1:
+            title = message.text.split(None, 1)[1]
+    elif len(message.command) > 2:
+        title = message.text.split(None, 2)[2]
+
     try:
         if message.command[0][0] == "f":
             await message.chat.promote_member(
@@ -427,6 +525,8 @@ async def promoteFunc(client, message, strings):
                     can_manage_video_chats=bot.can_manage_video_chats,
                 ),
             )
+            if title:
+                await client.set_administrator_title(message.chat.id, user_id, title)
             return await message.reply_text(
                 strings("full_promote").format(umention=umention)
             )
@@ -444,12 +544,15 @@ async def promoteFunc(client, message, strings):
                 can_manage_video_chats=bot.can_manage_video_chats,
             ),
         )
+        if title:
+            await client.set_administrator_title(message.chat.id, user_id, title)
+
         await message.reply_text(strings("normal_promote").format(umention=umention))
     except Exception as err:
         await message.reply_text(str(err))
 
 
-# Demote Member
+# Demote Member (UPDATED: Owner Immunity + Soft Demote)
 @nand.on_message(filters.command("demote") & filters.group)
 @adminsOnly("can_restrict_members")
 @use_chat_lang()
@@ -459,6 +562,15 @@ async def demote(client, message, strings):
         return await message.reply_text(strings("user_not_found"))
     if user_id == client.me.id:
         return await message.reply_text(strings("demote_self_err"))
+    
+    # Owner Check
+    try:
+        target_member = await message.chat.get_member(user_id)
+        if target_member.status == enums.ChatMemberStatus.OWNER:
+             return await message.reply_text("⚠️ You cannot demote the Owner!")
+    except:
+        pass
+
     if user_id in SUDO or user_id == OWNER_ID:
         return await message.reply_text(strings("demote_sudo_err"))
     try:
