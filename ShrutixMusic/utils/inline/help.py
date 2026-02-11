@@ -9,7 +9,7 @@ def private_help_panel(_):
     buttons = [
         [
             InlineKeyboardButton(
-                text="🎸 Music Management", 
+                text="🎧 Music Management", 
                 callback_data="help_domain_music"
             ),
         ],
@@ -62,7 +62,7 @@ def security_help_panel(_):
             InlineKeyboardButton(text="🗑️ Media Guardian", callback_data="help_cmd_autodelete"),
         ],
         [
-            InlineKeyboardButton(text="👮‍♂️ Admin Tool", callback_data="help_cmd_management"),
+            InlineKeyboardButton(text="👮 Administration", callback_data="help_cmd_management"),
         ],
         [
             InlineKeyboardButton(text=_["BACK_BUTTON"], callback_data="settings_back_helper"),
