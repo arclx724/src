@@ -158,7 +158,7 @@ async def security_helper_cb(client, CallbackQuery, _):
             "• **Reset:** Limits reset every 24 hours\n\n"
             "⚠️ **Important Note:**\n"
             "Only admins promoted via this bot can be auto-demoted.\n Use `/promote` and ensure the bot has 'Add Admin' permissions.\n\n"
-            "*Keeping your community safe from rogue admins!*"
+            "**Keeping your community safe from rogue admins!**"
         )
 
     elif cmd == "antibot":
@@ -217,6 +217,7 @@ async def security_helper_cb(client, CallbackQuery, _):
         )
     except MessageNotModified:
         pass
+
 
 
 
