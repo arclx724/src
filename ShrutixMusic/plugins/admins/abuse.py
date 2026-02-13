@@ -113,7 +113,7 @@ async def is_whitelisted(chat_id, user_id):
 @nand.on_message(filters.command("abusecommands") & filters.group)
 async def abuse_help_menu(client, message: Message):
     help_text = (
-        "<b>🤬 Abuse Module Commands:</b>\n\n"
+        "<b>🤬 Anti Abuse Commands:</b>\n\n"
         "• <code>/abuse [on/off]</code> — Toggle the slang filter in this chat.\n"
         "• <code>/authabuse [@user/id/reply]</code> — Exempt a user from deletions <b>(Super Admins only)</b>.\n"
         "• <code>/unauthabuse [@user/id/reply]</code> — Remove exemption <b>(Super Admins only)</b>.\n"
