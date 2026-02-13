@@ -1,7 +1,8 @@
 import re
+import html
 import asyncio
 from pyrogram import filters
-from pyrogram.enums import ChatMemberStatus
+from pyrogram.enums import ChatMemberStatus, ParseMode
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from ShrutixMusic import nand
@@ -14,6 +15,9 @@ from ShrutixMusic.utils.db import (
     is_abuse_whitelisted,
     get_abuse_whitelisted_users
 )
+
+# === YAHAN APNE SUPPORT GROUP KA LINK DAAL DENA ===
+SUPPORT_LINK = "https://t.me/ShrutiBots" 
 
 # --- Abusive Words List ---
 ABUSIVE_WORDS = [
@@ -113,42 +117,48 @@ async def abuse_watcher(client, message: Message):
     if not text:
         return
 
-    # 1. Check if Enabled
     if not await is_abuse_enabled(message.chat.id):
         return
 
-    # 2. Check Whitelist
     if await is_abuse_whitelisted(message.chat.id, message.from_user.id):
         return
 
-    # 3. Local Regex Check
     if ABUSE_PATTERN.search(text):
         try:
             await message.delete()
+            
+            # HTML escape taki user ke symbols bot ko crash na karein
+            safe_text = html.escape(text)
+            
+            # Gaaliyo par Telegram ka asli Spoiler Tag lagana
+            censored_text = ABUSE_PATTERN.sub(lambda m: f"<tg-spoiler>{m.group(0)}</tg-spoiler>", safe_text)
             
             bot_username = client.me.username if client.me else BOT_USERNAME
 
             buttons = InlineKeyboardMarkup([
                 [
-                    InlineKeyboardButton("➕ Add Me", url=f"https://t.me/{bot_username}?startgroup=true")
+                    InlineKeyboardButton("➕ Add Me", url=f"https://t.me/{bot_username}?startgroup=true"),
+                    InlineKeyboardButton("📢 Support", url=SUPPORT_LINK)
                 ]
             ])
 
             warning_text = (
-                f"🚫 {message.from_user.mention}, your message was removed.\n"
-                f"⚠️ **Reason:** Profanity/Abuse Detected."
+                f"🚫 Hey {message.from_user.mention}, your message was removed.\n\n"
+                f"🔍 <b>Censored:</b>\n"
+                f"{censored_text}\n\n"
+                f"Please keep the chat respectful."
             )
 
             sent = await message.reply_text(
                 warning_text,
-                reply_markup=buttons
+                reply_markup=buttons,
+                parse_mode=ParseMode.HTML # <--- ParseMode HTML zaroori hai taaki spoiler tag kaam kare
             )
             
-            # 10 Seconds baad warning delete
-            await asyncio.sleep(10)
+            # Exactly 60 seconds baad message auto delete
+            await asyncio.sleep(60)
             await sent.delete()
             
         except Exception:
-            # Agar bot ke paas delete permission nahi hai
             pass
             
