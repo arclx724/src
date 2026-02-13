@@ -32,19 +32,21 @@ ABUSIVE_WORDS = [
 
 ABUSE_PATTERN = re.compile(r'\b(' + '|'.join(map(re.escape, ABUSIVE_WORDS)) + r')\b', re.IGNORECASE)
 
-# === CUSTOM ERROR REPLIES ===
+# === CUSTOM ERROR REPLIES (Now in HTML) ===
 REPLIES = {
-    "NOT_ADMIN": "❌ **Access Denied:** Only Admins can use this command.",
-    "NOT_SUPER_ADMIN": "⚠️ **Access Denied:** You need the **'Change Group Info'** right (Super Admin) to execute this command.",
-    "BOT_NO_RIGHTS": "❗️ **Permission Error:** I don't have the right to **Delete Messages**. Please promote me properly.",
-    "NO_USER_FOUND": "❓ **Format Error:** Please reply to a user, provide their `@username`, or `user_id`.",
+    "NOT_ADMIN": "❌ <b>Access Denied:</b> Only Admins can use this command.",
+    "NOT_SUPER_ADMIN": "⚠️ <b>Access Denied:</b> You need the <b>'Change Group Info'</b> right (Super Admin) to execute this command.",
+    "BOT_NO_RIGHTS": "❗️ <b>Permission Error:</b> I don't have the right to <b>Delete Messages</b>. Please promote me properly.",
+    "NO_USER_FOUND": "❓ <b>Format Error:</b> Please reply to a user, provide their <code>@username</code>, or <code>user_id</code>.",
     "BOT_ITSELF": "🤖 I cannot whitelist/unwhitelist myself!",
 }
 
 # ================= HELPER FUNCTIONS =================
 
 async def get_user_privilege(client, chat_id, user_id):
-    """Returns user's status: 'CREATOR', 'SUPER_ADMIN', 'ADMIN', or 'MEMBER'"""
+    if not user_id:
+        return "ADMIN" 
+        
     try:
         member = await client.get_chat_member(chat_id, user_id)
         if member.status == ChatMemberStatus.OWNER:
@@ -58,7 +60,6 @@ async def get_user_privilege(client, chat_id, user_id):
     return "MEMBER"
 
 async def check_bot_rights(client, chat_id):
-    """Checks if the bot has permission to delete messages"""
     try:
         bot_member = await client.get_chat_member(chat_id, client.me.id)
         if bot_member.privileges and bot_member.privileges.can_delete_messages:
@@ -68,7 +69,6 @@ async def check_bot_rights(client, chat_id):
     return False
 
 async def extract_user(client, message: Message):
-    """Extracts user from reply, @username, or user_id"""
     if message.reply_to_message:
         return message.reply_to_message.from_user
     if len(message.command) > 1:
@@ -85,24 +85,26 @@ async def extract_user(client, message: Message):
 @nand.on_message(filters.command("abusecommands") & filters.group)
 async def abuse_help_menu(client, message: Message):
     help_text = (
-        "**🤬 Abuse Module Commands:**\n\n"
-        "• `/abuse [on/off]` — Toggle the slang filter in this chat.\n"
-        "• `/authabuse [@user/id/reply]` — Exempt a user from deletions **(Super Admins only)**.\n"
-        "• `/unauthabuse [@user/id/reply]` — Remove exemption **(Super Admins only)**.\n"
-        "• `/unauthabuse all` — Remove all users from the whitelist **(Super Admins only)**.\n"
-        "• `/authlistabuse` — View all currently exempted users.\n\n"
-        "*(Note: 'Super Admin' means you must have 'Change Group Info' rights)*"
+        "<b>🤬 Abuse Module Commands:</b>\n\n"
+        "• <code>/abuse [on/off]</code> — Toggle the slang filter in this chat.\n"
+        "• <code>/authabuse [@user/id/reply]</code> — Exempt a user from deletions <b>(Super Admins only)</b>.\n"
+        "• <code>/unauthabuse [@user/id/reply]</code> — Remove exemption <b>(Super Admins only)</b>.\n"
+        "• <code>/unauthabuse all</code> — Remove all users from the whitelist <b>(Super Admins only)</b>.\n"
+        "• <code>/authlistabuse</code> — View all currently exempted users.\n\n"
+        "<i>*(Note: 'Super Admin' means you must have 'Change Group Info' rights)*</i>"
     )
-    await message.reply_text(help_text)
+    await message.reply_text(help_text, parse_mode=ParseMode.HTML)
 
 @nand.on_message(filters.command("abuse") & filters.group)
 async def toggle_abuse(client, message: Message):
-    privilege = await get_user_privilege(client, message.chat.id, message.from_user.id)
+    user_id = message.from_user.id if message.from_user else None
+    privilege = await get_user_privilege(client, message.chat.id, user_id)
+    
     if privilege in ["MEMBER"]:
-        return await message.reply_text(REPLIES["NOT_ADMIN"])
+        return await message.reply_text(REPLIES["NOT_ADMIN"], parse_mode=ParseMode.HTML)
 
     if not await check_bot_rights(client, message.chat.id):
-        return await message.reply_text(REPLIES["BOT_NO_RIGHTS"])
+        return await message.reply_text(REPLIES["BOT_NO_RIGHTS"], parse_mode=ParseMode.HTML)
 
     if len(message.command) > 1:
         arg = message.command[1].lower()
@@ -111,75 +113,79 @@ async def toggle_abuse(client, message: Message):
         elif arg in ["off", "disable", "no"]:
             new_status = False
         else:
-            return await message.reply_text("💡 **Usage:** `/abuse on` or `/abuse off`")
+            return await message.reply_text("💡 <b>Usage:</b> <code>/abuse on</code> or <code>/abuse off</code>", parse_mode=ParseMode.HTML)
     else:
         current = await is_abuse_enabled(message.chat.id)
         new_status = not current
     
     await set_abuse_status(message.chat.id, new_status)
     state = "Enabled ✅" if new_status else "Disabled ❌"
-    await message.reply_text(f"🛡 **Slang Filter has been {state}**")
+    await message.reply_text(f"🛡 <b>Slang Filter has been {state}</b>", parse_mode=ParseMode.HTML)
 
 
 @nand.on_message(filters.command("authabuse") & filters.group)
 async def auth_abuse_user(client, message: Message):
-    privilege = await get_user_privilege(client, message.chat.id, message.from_user.id)
-    if privilege in ["MEMBER", "ADMIN"]: # Standard admins are blocked
-        return await message.reply_text(REPLIES["NOT_SUPER_ADMIN"])
+    user_id = message.from_user.id if message.from_user else None
+    privilege = await get_user_privilege(client, message.chat.id, user_id)
+    
+    if privilege in ["MEMBER", "ADMIN"]: 
+        return await message.reply_text(REPLIES["NOT_SUPER_ADMIN"], parse_mode=ParseMode.HTML)
 
     user = await extract_user(client, message)
     if not user:
-        return await message.reply_text(REPLIES["NO_USER_FOUND"])
+        return await message.reply_text(REPLIES["NO_USER_FOUND"], parse_mode=ParseMode.HTML)
     if user.id == client.me.id:
-        return await message.reply_text(REPLIES["BOT_ITSELF"])
+        return await message.reply_text(REPLIES["BOT_ITSELF"], parse_mode=ParseMode.HTML)
 
     await abuse_whitelist_user(message.chat.id, user.id)
-    await message.reply_text(f"✅ {user.mention} has been **exempted** from the slang filter.")
+    await message.reply_text(f"✅ {user.mention} has been <b>exempted</b> from the slang filter.", parse_mode=ParseMode.HTML)
 
 
 @nand.on_message(filters.command("unauthabuse") & filters.group)
 async def unauth_abuse_user(client, message: Message):
-    privilege = await get_user_privilege(client, message.chat.id, message.from_user.id)
-    if privilege in ["MEMBER", "ADMIN"]: # Standard admins are blocked
-        return await message.reply_text(REPLIES["NOT_SUPER_ADMIN"])
+    user_id = message.from_user.id if message.from_user else None
+    privilege = await get_user_privilege(client, message.chat.id, user_id)
+    
+    if privilege in ["MEMBER", "ADMIN"]: 
+        return await message.reply_text(REPLIES["NOT_SUPER_ADMIN"], parse_mode=ParseMode.HTML)
 
-    # Check for Bulk Remove ("/unauthabuse all")
     if len(message.command) == 2 and message.command[1].lower() == "all":
         users = await get_abuse_whitelisted_users(message.chat.id)
         if not users:
-            return await message.reply_text("📂 The whitelist is already empty.")
+            return await message.reply_text("📂 The whitelist is already empty.", parse_mode=ParseMode.HTML)
         
-        # Safe way to clear all users via existing DB logic
         for uid in users:
             await abuse_unwhitelist_user(message.chat.id, uid)
-        return await message.reply_text("🧹 **All users have been removed** from the exemption list.")
+        return await message.reply_text("🧹 <b>All users have been removed</b> from the exemption list.", parse_mode=ParseMode.HTML)
 
     user = await extract_user(client, message)
     if not user:
-        return await message.reply_text(REPLIES["NO_USER_FOUND"])
+        return await message.reply_text(REPLIES["NO_USER_FOUND"], parse_mode=ParseMode.HTML)
 
     await abuse_unwhitelist_user(message.chat.id, user.id)
-    await message.reply_text(f"🚫 {user.mention}'s exemption has been **removed**.")
+    await message.reply_text(f"🚫 {user.mention}'s exemption has been <b>removed</b>.", parse_mode=ParseMode.HTML)
 
 
 @nand.on_message(filters.command("authlistabuse") & filters.group)
 async def auth_abuse_list(client, message: Message):
-    privilege = await get_user_privilege(client, message.chat.id, message.from_user.id)
+    user_id = message.from_user.id if message.from_user else None
+    privilege = await get_user_privilege(client, message.chat.id, user_id)
+    
     if privilege in ["MEMBER"]:
-        return await message.reply_text(REPLIES["NOT_ADMIN"])
+        return await message.reply_text(REPLIES["NOT_ADMIN"], parse_mode=ParseMode.HTML)
 
     users = await get_abuse_whitelisted_users(message.chat.id)
     if not users:
-        return await message.reply_text("📂 The abuse whitelist is currently empty.")
+        return await message.reply_text("📂 The abuse whitelist is currently empty.", parse_mode=ParseMode.HTML)
     
-    text = "📋 **Abuse Exempted Users:**\n\n"
+    text = "📋 <b>Abuse Exempted Users:</b>\n\n"
     for uid in users:
         try:
             u = await client.get_users(uid)
-            text += f"• {u.mention} (`{uid}`)\n"
+            text += f"• {u.mention} (<code>{uid}</code>)\n"
         except:
-            text += f"• ID: `{uid}`\n"
-    await message.reply_text(text)
+            text += f"• ID: <code>{uid}</code>\n"
+    await message.reply_text(text, parse_mode=ParseMode.HTML)
 
 
 # ================= WATCHER LOGIC =================
@@ -193,13 +199,13 @@ async def abuse_watcher(client, message: Message):
     if not await is_abuse_enabled(message.chat.id):
         return
 
-    # User in whitelist?
-    if await is_abuse_whitelisted(message.chat.id, message.from_user.id):
+    user_id = message.from_user.id if message.from_user else (message.sender_chat.id if message.sender_chat else None)
+
+    if user_id and await is_abuse_whitelisted(message.chat.id, user_id):
         return
 
     if ABUSE_PATTERN.search(text):
         try:
-            # Check bot rights silently before trying to delete
             if not await check_bot_rights(client, message.chat.id):
                 return 
 
@@ -217,8 +223,10 @@ async def abuse_watcher(client, message: Message):
                 ]
             ])
 
+            mention = message.from_user.mention if message.from_user else (f"<b>{message.sender_chat.title}</b>" if message.sender_chat else "User")
+
             warning_text = (
-                f"🚫 Hey {message.from_user.mention}, your message was removed.\n\n"
+                f"🚫 Hey {mention}, your message was removed.\n\n"
                 f"🔍 <b>Censored:</b>\n"
                 f"{censored_text}\n\n"
                 f"Please keep the chat respectful."
@@ -230,7 +238,6 @@ async def abuse_watcher(client, message: Message):
                 parse_mode=ParseMode.HTML
             )
             
-            # Exactly 60 seconds baad message auto delete
             await asyncio.sleep(60)
             await sent.delete()
             
