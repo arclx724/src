@@ -179,7 +179,7 @@ async def security_helper_cb(client, CallbackQuery, _):
 
     elif cmd == "antibot":
         text = (
-            "**🤖 ᴀɴᴛɪ-ʙᴏᴛ ᴄᴏᴍᴍᴀɴᴅs :**\n\nᴘʀᴏᴛᴇᴄᴛ ʏᴏᴜʀ ɢʀᴏᴜᴘ ғʀᴏᴍ ᴜɴᴡᴀɴᴛᴇᴅ ʙᴏᴛs ᴀɴᴅ ʀᴀɪᴅs.\n\n/antibot [on ᴏʀ enable] : ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ᴋɪᴄᴋ ᴏʀ ʙᴀɴ ᴀɴʏ ɴᴇᴡ ʙᴏᴛ ᴛʜᴀᴛ ᴛʀɪᴇs ᴛᴏ ᴊᴏɪɴ.\n/antibot [off ᴏʀ disable] : ᴀʟʟᴏᴡ ʙᴏᴛs ᴛᴏ ᴊᴏɪɴ ᴛʜᴇ ɢʀᴏᴜᴘ ɴᴏʀᴍᴀʟʟʏ.""
+            "**🤖 ᴀɴᴛɪ-ʙᴏᴛ ᴄᴏᴍᴍᴀɴᴅs :**\n\nᴘʀᴏᴛᴇᴄᴛ ʏᴏᴜʀ ɢʀᴏᴜᴘ ғʀᴏᴍ ᴜɴᴡᴀɴᴛᴇᴅ ʙᴏᴛs ᴀɴᴅ ʀᴀɪᴅs.\n\n/antibot [on ᴏʀ enable] : ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ᴋɪᴄᴋ ᴏʀ ʙᴀɴ ᴀɴʏ ɴᴇᴡ ʙᴏᴛ ᴛʜᴀᴛ ᴛʀɪᴇs ᴛᴏ ᴊᴏɪɴ.\n/antibot [off ᴏʀ disable] : ᴀʟʟᴏᴡ ʙᴏᴛs ᴛᴏ ᴊᴏɪɴ ᴛʜᴇ ɢʀᴏᴜᴘ ɴᴏʀᴍᴀʟʟʏ."
         )
 
     elif cmd == "abuse":
@@ -194,7 +194,7 @@ async def security_helper_cb(client, CallbackQuery, _):
 
     elif cmd == "antiedit":
         text = (
-            "**✏️ ᴀɴᴛɪ-ᴇᴅɪᴛ ᴄᴏᴍᴍᴀɴᴅs :**\n\nᴘʀᴇᴠᴇɴᴛ sᴄᴀᴍᴍᴇʀs ғʀᴏᴍ ᴇᴅɪᴛɪɴɢ ᴍᴇssᴀɢᴇs ᴛᴏ ᴀᴅᴅ sᴘᴀᴍ ʟɪɴᴋs ᴀғᴛᴇʀ sᴇɴᴅɪɴɢ ᴛʜᴇᴍ.\n\n/antiedit [on ᴏʀ enable] : ᴛᴜʀɴ ᴏɴ ᴀɴᴛɪ-ᴇᴅɪᴛ. ɪғ ᴀ ᴜsᴇʀ ᴇᴅɪᴛs ᴀ ᴍᴇssᴀɢᴇ, ɪᴛ ᴡɪʟʟ ʙᴇ ᴅᴇʟᴇᴛᴇᴅ ᴏʀ ᴡᴀʀɴᴇᴅ.\n/antiedit [off ᴏʀ disable] : ᴛᴜʀɴ ᴏғғ ᴀɴᴛɪ-ᴇᴅɪᴛ sʏsᴛᴇᴍ.""
+            "**✏️ ᴀɴᴛɪ-ᴇᴅɪᴛ ᴄᴏᴍᴍᴀɴᴅs :**\n\nᴘʀᴇᴠᴇɴᴛ sᴄᴀᴍᴍᴇʀs ғʀᴏᴍ ᴇᴅɪᴛɪɴɢ ᴍᴇssᴀɢᴇs ᴛᴏ ᴀᴅᴅ sᴘᴀᴍ ʟɪɴᴋs ᴀғᴛᴇʀ sᴇɴᴅɪɴɢ ᴛʜᴇᴍ.\n\n/antiedit [on ᴏʀ enable] : ᴛᴜʀɴ ᴏɴ ᴀɴᴛɪ-ᴇᴅɪᴛ. ɪғ ᴀ ᴜsᴇʀ ᴇᴅɪᴛs ᴀ ᴍᴇssᴀɢᴇ, ɪᴛ ᴡɪʟʟ ʙᴇ ᴅᴇʟᴇᴛᴇᴅ ᴏʀ ᴡᴀʀɴᴇᴅ.\n/antiedit [off ᴏʀ disable] : ᴛᴜʀɴ ᴏғғ ᴀɴᴛɪ-ᴇᴅɪᴛ sʏsᴛᴇᴍ."
         )
 
     elif cmd == "autodelete":
@@ -215,15 +215,4 @@ async def security_helper_cb(client, CallbackQuery, _):
         )
     except MessageNotModified:
         pass
-
-
-
-
-
-
-
-
-
-
-
-
+        
