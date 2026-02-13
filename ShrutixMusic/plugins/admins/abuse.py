@@ -16,149 +16,243 @@ from ShrutixMusic.utils.db import (
     get_abuse_whitelisted_users
 )
 
-# === YAHAN APNE SUPPORT GROUP KA LINK DAAL DENA ===
-SUPPORT_LINK = "https://t.me/ShrutiBots" 
+# ================= CONFIG =================
 
-# --- Abusive Words List ---
+SUPPORT_LINK = "https://t.me/ShrutiBots"
+
 ABUSIVE_WORDS = [
-    "aand", "aandu", "ass", "asshole", "b.c", "b.k.l", "b.s.d.k", 
-    "bahenchod", "bakchod", "bastard", "bc", "behenchod", "betichod", 
-    "bhadua", "bhadwa", "bhenchod", "bhosad", "bhosdk", "bhosdike", 
-    "bitch", "bkl", "blowjob", "boobs", "bsdk", "chut", "chutiya", 
-    "cock", "cunt", "dick", "fucker", "fucking", "gaand", "gandu", 
-    "haramkhor", "jhaatu", "kutta", "lauda", "loda", "lund", "madarchod", 
-    "mc", "mkc", "motherfucker", "pussy", "randi", "sex", "slut", "tatte", 
-    "tatti", "whore", "xxx"
-    # Aap apni poori list yahan add kar sakte hain
+    "aand", "aandu", "ass", "asshole", "b.c", "b.k.l", "b.s.d.k",
+    "bahenchod", "bakchod", "bastard", "bc", "behenchod", "betichod",
+    "bhadua", "bhadwa", "bhenchod", "bhosad", "bhosdk", "bhosdike",
+    "bitch", "bkl", "blowjob", "boobs", "bsdk", "chut", "chutiya",
+    "cock", "cunt", "dick", "fucker", "fucking", "gaand", "gandu",
+    "haramkhor", "jhaatu", "kutta", "lauda", "loda", "lund", "madarchod",
+    "mc", "mkc", "motherfucker", "pussy", "randi", "sex", "slut",
+    "tatte", "tatti", "whore", "xxx"
 ]
 
-# Pre-compile Regex for speed
-ABUSE_PATTERN = re.compile(r'\b(' + '|'.join(map(re.escape, ABUSIVE_WORDS)) + r')\b', re.IGNORECASE)
+ABUSE_PATTERN = re.compile(
+    r'(?<!\w)(' + '|'.join(map(re.escape, ABUSIVE_WORDS)) + r')(?!\w)',
+    re.IGNORECASE
+)
 
-# ================= HELPER FUNCTIONS =================
+# ================= RAM CACHE =================
 
-async def is_admin(chat_id, user_id, client):
+ABUSE_CACHE = {}          # chat_id: True/False
+WHITELIST_CACHE = {}      # chat_id: set(user_ids)
+WARNING_COOLDOWN = {}     # (chat_id, user_id): timestamp
+
+# ================= ERROR REPLIES =================
+
+REPLIES = {
+    "NOT_ADMIN": "❌ **Access Denied:** Only Admins can use this command.",
+    "NOT_SUPER_ADMIN": "⚠️ **Access Denied:** You need 'Change Group Info' right.",
+    "BOT_NO_RIGHTS": "❗ I don't have Delete Message permission.",
+    "NO_USER_FOUND": "❓ Reply or give @username/user_id.",
+    "BOT_ITSELF": "🤖 I cannot whitelist myself!"
+}
+
+# ================= HELPER =================
+
+async def get_user_privilege(client, chat_id, user_id):
+    if not user_id:
+        return "ADMIN"
+
     try:
         member = await client.get_chat_member(chat_id, user_id)
-        return member.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]
+        if member.status == ChatMemberStatus.OWNER:
+            return "CREATOR"
+        if member.status == ChatMemberStatus.ADMINISTRATOR:
+            if member.privileges and member.privileges.can_change_info:
+                return "SUPER_ADMIN"
+            return "ADMIN"
+    except:
+        pass
+    return "MEMBER"
+
+
+async def check_bot_rights(client, chat_id):
+    try:
+        bot = await client.get_chat_member(chat_id, client.me.id)
+        return bot.privileges and bot.privileges.can_delete_messages
     except:
         return False
+
+
+async def extract_user(client, message: Message):
+    if message.reply_to_message:
+        return message.reply_to_message.from_user
+    if len(message.command) > 1:
+        try:
+            return await client.get_users(message.command[1])
+        except:
+            return None
+    return None
+
 
 # ================= COMMANDS =================
 
 @nand.on_message(filters.command("abuse") & filters.group)
 async def toggle_abuse(client, message: Message):
-    if not await is_admin(message.chat.id, message.from_user.id, client):
-        return await message.reply_text("❌ Only admins can use this command.")
+    user_id = message.from_user.id if message.from_user else None
+    privilege = await get_user_privilege(client, message.chat.id, user_id)
 
-    if len(message.command) > 1:
-        arg = message.command[1].lower()
-        if arg in ["on", "enable", "yes"]:
-            new_status = True
-        elif arg in ["off", "disable", "no"]:
-            new_status = False
-        else:
-            return await message.reply_text("Usage: `/abuse on` or `/abuse off`")
-    else:
+    if privilege == "MEMBER":
+        return await message.reply_text(REPLIES["NOT_ADMIN"])
+
+    if not await check_bot_rights(client, message.chat.id):
+        return await message.reply_text(REPLIES["BOT_NO_RIGHTS"])
+
+    current = ABUSE_CACHE.get(message.chat.id)
+
+    if current is None:
         current = await is_abuse_enabled(message.chat.id)
-        new_status = not current
-    
+
+    new_status = not current
     await set_abuse_status(message.chat.id, new_status)
+
+    ABUSE_CACHE[message.chat.id] = new_status
+
     state = "Enabled ✅" if new_status else "Disabled ❌"
-    await message.reply_text(f"🛡 Abuse protection is now {state}")
+    await message.reply_text(f"🛡 Slang Filter {state}")
 
-@nand.on_message(filters.command(["auth", "allow"]) & filters.group)
-async def auth_user(client, message: Message):
-    if not await is_admin(message.chat.id, message.from_user.id, client):
-        return
 
-    if not message.reply_to_message:
-        return await message.reply_text("⚠️ Reply to a user to auth them.")
+@nand.on_message(filters.command("authabuse") & filters.group)
+async def auth_abuse_user(client, message: Message):
+    privilege = await get_user_privilege(
+        client,
+        message.chat.id,
+        message.from_user.id if message.from_user else None
+    )
 
-    target = message.reply_to_message.from_user
-    await abuse_whitelist_user(message.chat.id, target.id)
-    await message.reply_text(f"✅ {target.mention} is now whitelisted from abuse filter.")
+    if privilege not in ["CREATOR", "SUPER_ADMIN"]:
+        return await message.reply_text(REPLIES["NOT_SUPER_ADMIN"])
 
-@nand.on_message(filters.command(["unauth", "disallow"]) & filters.group)
-async def unauth_user(client, message: Message):
-    if not await is_admin(message.chat.id, message.from_user.id, client):
-        return
+    user = await extract_user(client, message)
+    if not user:
+        return await message.reply_text(REPLIES["NO_USER_FOUND"])
 
-    if not message.reply_to_message:
-        return await message.reply_text("⚠️ Reply to a user to un-auth them.")
+    if user.id == client.me.id:
+        return await message.reply_text(REPLIES["BOT_ITSELF"])
 
-    target = message.reply_to_message.from_user
-    await abuse_unwhitelist_user(message.chat.id, target.id)
-    await message.reply_text(f"🚫 {target.mention} removed from whitelist.")
+    await abuse_whitelist_user(message.chat.id, user.id)
 
-@nand.on_message(filters.command("authlist") & filters.group)
-async def auth_list(client, message: Message):
-    if not await is_admin(message.chat.id, message.from_user.id, client):
-        return
+    WHITELIST_CACHE.setdefault(message.chat.id, set()).add(user.id)
 
-    users = await get_abuse_whitelisted_users(message.chat.id)
-    if not users:
-        return await message.reply_text("📂 Whitelist is empty.")
-    
-    text = "📋 **Abuse Whitelisted Users:**\n"
-    for uid in users:
-        try:
-            u = await client.get_users(uid)
-            text += f"- {u.mention}\n"
-        except:
-            text += f"- ID: {uid}\n"
-    await message.reply_text(text)
+    await message.reply_text(f"✅ {user.mention} exempted from filter.")
 
-# ================= WATCHER LOGIC =================
+
+@nand.on_message(filters.command("unauthabuse") & filters.group)
+async def unauth_abuse_user(client, message: Message):
+    privilege = await get_user_privilege(
+        client,
+        message.chat.id,
+        message.from_user.id if message.from_user else None
+    )
+
+    if privilege not in ["CREATOR", "SUPER_ADMIN"]:
+        return await message.reply_text(REPLIES["NOT_SUPER_ADMIN"])
+
+    user = await extract_user(client, message)
+    if not user:
+        return await message.reply_text(REPLIES["NO_USER_FOUND"])
+
+    await abuse_unwhitelist_user(message.chat.id, user.id)
+
+    if message.chat.id in WHITELIST_CACHE:
+        WHITELIST_CACHE[message.chat.id].discard(user.id)
+
+    await message.reply_text(f"🚫 {user.mention} removed from exemption.")
+
+
+# ================= WATCHER =================
 
 @nand.on_message(filters.group & ~filters.bot & ~filters.service, group=12)
 async def abuse_watcher(client, message: Message):
+
     text = message.text or message.caption
     if not text:
         return
 
-    if not await is_abuse_enabled(message.chat.id):
+    chat_id = message.chat.id
+
+    # === Abuse Status Cache ===
+    enabled = ABUSE_CACHE.get(chat_id)
+
+    if enabled is None:
+        enabled = await is_abuse_enabled(chat_id)
+        ABUSE_CACHE[chat_id] = enabled
+
+    if not enabled:
         return
 
-    if await is_abuse_whitelisted(message.chat.id, message.from_user.id):
+    # === Get User ID ===
+    if message.from_user:
+        user_id = message.from_user.id
+    elif message.sender_chat:
+        user_id = message.sender_chat.id
+    else:
         return
 
-    if ABUSE_PATTERN.search(text):
-        try:
-            await message.delete()
-            
-            # HTML escape taki user ke symbols bot ko crash na karein
-            safe_text = html.escape(text)
-            
-            # YAHAN FIX KIYA HAI: Pyrogram ka sahi <spoiler> tag lagaya hai
-            censored_text = ABUSE_PATTERN.sub(lambda m: f"<spoiler>{m.group(0)}</spoiler>", safe_text)
-            
-            bot_username = client.me.username if client.me else BOT_USERNAME
+    # === Whitelist Cache ===
+    if chat_id not in WHITELIST_CACHE:
+        users = await get_abuse_whitelisted_users(chat_id)
+        WHITELIST_CACHE[chat_id] = set(users)
 
-            buttons = InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton("➕ Add Me", url=f"https://t.me/{bot_username}?startgroup=true"),
-                    InlineKeyboardButton("📢 Support", url=SUPPORT_LINK)
-                ]
-            ])
+    if user_id in WHITELIST_CACHE[chat_id]:
+        return
 
-            warning_text = (
-                f"🚫 Hey {message.from_user.mention}, your message was removed.\n\n"
-                f"🔍 <b>Censored:</b>\n"
-                f"{censored_text}\n\n"
-                f"Please keep the chat respectful."
-            )
+    # === Regex Check ===
+    if not ABUSE_PATTERN.search(text):
+        return
 
-            sent = await message.reply_text(
-                warning_text,
-                reply_markup=buttons,
-                parse_mode=ParseMode.HTML # <--- ParseMode HTML
-            )
-            
-            # Exactly 60 seconds baad message auto delete
-            await asyncio.sleep(60)
-            await sent.delete()
-            
-        except Exception:
-            pass
-            
+    # === Cooldown (30 sec) ===
+    key = (chat_id, user_id)
+    now = asyncio.get_event_loop().time()
+
+    if key in WARNING_COOLDOWN and now - WARNING_COOLDOWN[key] < 30:
+        return
+
+    WARNING_COOLDOWN[key] = now
+
+    if not await check_bot_rights(client, chat_id):
+        return
+
+    try:
+        await message.delete()
+
+        safe_text = html.escape(text)
+        censored = ABUSE_PATTERN.sub(
+            lambda m: f"<spoiler>{m.group(0)}</spoiler>",
+            safe_text
+        )
+
+        mention = (
+            message.from_user.mention
+            if message.from_user
+            else f"<b>{html.escape(message.sender_chat.title)}</b>"
+        )
+
+        buttons = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "➕ Add Me",
+                    url=f"https://t.me/{BOT_USERNAME}?startgroup=true"
+                ),
+                InlineKeyboardButton("📢 Support", url=SUPPORT_LINK)
+            ]
+        ])
+
+        warn_msg = await message.reply_text(
+            f"🚫 Hey {mention}, message removed.\n\n"
+            f"🔍 <b>Censored:</b>\n{censored}\n\n"
+            f"Keep chat respectful.",
+            parse_mode=ParseMode.HTML,
+            reply_markup=buttons
+        )
+
+        await asyncio.sleep(60)
+        await warn_msg.delete()
+
+    except:
+        pass
