@@ -8,17 +8,11 @@ from ShrutixMusic import nand
 from ShrutixMusic.utils.db import set_antiedit_status, is_antiedit_enabled
 from config import SUPPORT_CHAT, BOT_USERNAME
 
-# ======================================================
 # CONFIG
-# ======================================================
+DELETE_DELAY = 60
+ADMIN_CACHE = {}
 
-DELETE_DELAY = 60  # seconds before deleting edited message + bot warning
-ADMIN_CACHE = {}   # Cache for admin users per chat
-
-# ======================================================
 # RANDOM WARNING MESSAGES
-# ======================================================
-
 ANTI_EDIT_REPLIES = [
     "⚠️ {user}, editing messages is not allowed here!\n⏳ Your message will be deleted in 60 seconds.",
     "🚫 Nice try {user}!\nEditing messages won't work in this group.\n⏳ Deleting soon...",
@@ -27,10 +21,7 @@ ANTI_EDIT_REPLIES = [
     "👀 {user}, trying to edit huh?\nNot allowed here!\n⏳ Deleting in 60 seconds."
 ]
 
-# ======================================================
-# ADMIN CHECK (CACHED)
-# ======================================================
-
+# ADMIN CHECK
 async def is_admin(client, chat_id, user_id):
     if chat_id not in ADMIN_CACHE:
         try:
@@ -40,14 +31,12 @@ async def is_admin(client, chat_id, user_id):
             return False
     return user_id in ADMIN_CACHE[chat_id]
 
-# ======================================================
 # COMMAND: /antiedit on/off
-# ======================================================
-
 @nand.on_message(filters.command("antiedit") & filters.group)
 async def antiedit_switch(client, message: Message):
     try:
-        if not await is_admin(client, message.chat.id, message.from_user.id):
+        member = await client.get_chat_member(message.chat.id, message.from_user.id)
+        if member.status not in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]:
             return await message.reply_text("❌ Only admins can use this command.")
     except:
         return await message.reply_text("❌ Could not verify admin status.")
@@ -60,7 +49,6 @@ async def antiedit_switch(client, message: Message):
         )
 
     arg = message.command[1].lower()
-
     if arg == "on":
         await set_antiedit_status(message.chat.id, True)
         await message.reply_text("✅ Anti-Edit Enabled!")
@@ -70,10 +58,7 @@ async def antiedit_switch(client, message: Message):
     else:
         await message.reply_text("❌ Invalid option. Use `on` or `off`.")
 
-# ======================================================
-# BACKGROUND DELETE FUNCTION
-# ======================================================
-
+# BACKGROUND DELETE
 async def delete_later(user_msg, warning_msg):
     await asyncio.sleep(DELETE_DELAY)
     try:
@@ -85,22 +70,20 @@ async def delete_later(user_msg, warning_msg):
     except:
         pass
 
-# ======================================================
 # WATCHER: ON EDITED MESSAGE
-# ======================================================
-
 @nand.on_edited_message(filters.group)
 async def anti_edit_watcher(client, message: Message):
     chat_id = message.chat.id
     user_id = message.from_user.id
 
-    # Feature enabled?
+    # Check if enabled
     if not await is_antiedit_enabled(chat_id):
         return
 
     # Ignore admins
     try:
-        if await is_admin(client, chat_id, user_id):
+        member = await client.get_chat_member(chat_id, user_id)
+        if member.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]:
             return
     except:
         pass
@@ -112,16 +95,16 @@ async def anti_edit_watcher(client, message: Message):
 
     bot_username = client.me.username if client.me else BOT_USERNAME
 
+    # HORIZONTAL BUTTONS
     buttons = InlineKeyboardMarkup([
-        [InlineKeyboardButton("➕ Add Me", url=f"https://t.me/{bot_username}?startgroup=true")],
-        [InlineKeyboardButton("Support", url=SUPPORT_CHAT)]
+        [
+            InlineKeyboardButton("➕ Add Me", url=f"https://t.me/{bot_username}?startgroup=true"),
+            InlineKeyboardButton("Support", url=SUPPORT_CHAT)
+        ]
     ])
 
     try:
-        # Send warning message
         warning = await message.reply_text(reply_text, reply_markup=buttons)
-
-        # Non-blocking delete after DELETE_DELAY
         asyncio.create_task(delete_later(message, warning))
     except:
         pass
