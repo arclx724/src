@@ -103,14 +103,10 @@ async def set_delay_handler(client, message: Message):
         state = "ON" if status else "OFF"
 
         return await message.reply_text(
-            f"⚙️ **Auto Delete Settings**\n\n"
-            f"• Status: **{state}**\n"
-            f"• Delay: **{format_time(delay)}**\n\n"
-            "Usage:\n"
-            "`/setdelay 10 s`\n"
-            "`/setdelay 5 m`\n"
-            "`/setdelay 1 h`\n"
-            "`/setdelay off`"
+            f"⚙️ **ᴀᴜᴛᴏ ᴅᴇʟᴇᴛᴇ sᴇᴛᴛɪɴɢs**\n\n"
+            f"• sᴛᴀᴛᴜs: **{state}**\n"
+            f"• ᴅᴇʟᴀʏ: **{format_time(delay)}**\n\n"
+            "ᴜsᴀɢᴇ :\n/setdelay 10 s\n/setdelay 5 m\n/setdelay 1 h\n/setdelay off"
         )
 
     arg1 = message.command[1].lower()
