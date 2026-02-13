@@ -91,7 +91,7 @@ async def abuse_help_menu(client, message: Message):
         "• <code>/unauthabuse [@user/id/reply]</code> — Remove exemption <b>(Super Admins only)</b>.\n"
         "• <code>/unauthabuse all</code> — Remove all users from the whitelist <b>(Super Admins only)</b>.\n"
         "• <code>/authlistabuse</code> — View all currently exempted users.\n\n"
-        "> <i> **(Note: 'Super Admin' means you must have 'Change Group Info' rights)**</i>"
+        "<blockquote><b>Note:</b> 'Super Admin' means you must have 'Change Group Info' rights.</blockquote>""
     )
     await message.reply_text(help_text, parse_mode=ParseMode.HTML)
 
