@@ -1,12 +1,11 @@
 import re
-import aiohttp
 import asyncio
 from pyrogram import filters
 from pyrogram.enums import ChatMemberStatus
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from ShrutixMusic import nand
-from config import OPENROUTER_API_KEY, BOT_USERNAME
+from config import BOT_USERNAME
 from ShrutixMusic.utils.db import (
     is_abuse_enabled,
     set_abuse_status,
@@ -16,7 +15,7 @@ from ShrutixMusic.utils.db import (
     get_abuse_whitelisted_users
 )
 
-# --- Abusive Words List (Shortened for display, but logic remains same) ---
+# --- Abusive Words List ---
 ABUSIVE_WORDS = [
     "aand", "aandu", "ass", "asshole", "b.c", "b.k.l", "b.s.d.k", 
     "bahenchod", "bakchod", "bastard", "bc", "behenchod", "betichod", 
@@ -26,10 +25,9 @@ ABUSIVE_WORDS = [
     "haramkhor", "jhaatu", "kutta", "lauda", "loda", "lund", "madarchod", 
     "mc", "mkc", "motherfucker", "pussy", "randi", "sex", "slut", "tatte", 
     "tatti", "whore", "xxx"
-    # Aap apni poori list yahan wapas paste kar sakte hain
+    # Aap apni poori list yahan add kar sakte hain
 ]
 
-API_URL = "https://openrouter.ai/api/v1/chat/completions"
 # Pre-compile Regex for speed
 ABUSE_PATTERN = re.compile(r'\b(' + '|'.join(map(re.escape, ABUSIVE_WORDS)) + r')\b', re.IGNORECASE)
 
@@ -42,49 +40,12 @@ async def is_admin(chat_id, user_id, client):
     except:
         return False
 
-async def check_toxicity_ai(text: str) -> bool:
-    """Checks text using Free AI Model"""
-    if not text or not OPENROUTER_API_KEY:
-        return False
-    
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://telegram.org", 
-    }
-    
-    payload = {
-        # Using a free, fast model
-        "model": "google/gemini-2.0-flash-exp:free",
-        "messages": [
-            {
-                "role": "system", 
-                "content": "You are a content filter. Reply ONLY with 'YES' if the message contains hate speech, severe abuse, or extreme profanity. Reply 'NO' if safe or mild."
-            },
-            {"role": "user", "content": text}
-        ],
-        "temperature": 0.1,
-        "max_tokens": 5
-    }
-
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(API_URL, headers=headers, json=payload) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    if 'choices' in data:
-                        answer = data['choices'][0]['message']['content'].strip().upper()
-                        return "YES" in answer
-    except Exception:
-        pass
-    return False
-
 # ================= COMMANDS =================
 
 @nand.on_message(filters.command("abuse") & filters.group)
 async def toggle_abuse(client, message: Message):
     if not await is_admin(message.chat.id, message.from_user.id, client):
-        return await message.reply_text("❌ Only admins can use this.")
+        return await message.reply_text("❌ Only admins can use this command.")
 
     if len(message.command) > 1:
         arg = message.command[1].lower()
@@ -148,7 +109,6 @@ async def auth_list(client, message: Message):
 
 @nand.on_message(filters.group & ~filters.bot & ~filters.service, group=12)
 async def abuse_watcher(client, message: Message):
-    # Text ya Caption check karein
     text = message.text or message.caption
     if not text:
         return
@@ -157,32 +117,15 @@ async def abuse_watcher(client, message: Message):
     if not await is_abuse_enabled(message.chat.id):
         return
 
-    # 2. Check Whitelist (Admins can also be filtered if not whitelisted)
+    # 2. Check Whitelist
     if await is_abuse_whitelisted(message.chat.id, message.from_user.id):
         return
 
-    detected = False
-    censored_text = text
-
-    # --- A. Local Regex Check (Fast) ---
+    # 3. Local Regex Check
     if ABUSE_PATTERN.search(text):
-        detected = True
-        # Gali ko hide karne ke liye replace logic
-        censored_text = ABUSE_PATTERN.sub(lambda m: f"||{m.group(0)}||", text)
-
-    # --- B. AI Check (Slower, but Smart) ---
-    # Sirf tab check kare jab Local detect na kare aur text thoda lamba ho
-    if not detected and OPENROUTER_API_KEY and len(text.split()) > 2:
-        if await check_toxicity_ai(text):
-            detected = True
-            censored_text = f"||{text}||" # AI detected, hide full text
-
-    # --- ACTION ---
-    if detected:
         try:
             await message.delete()
             
-            # Bot username fetch for link
             bot_username = client.me.username if client.me else BOT_USERNAME
 
             buttons = InlineKeyboardMarkup([
@@ -201,11 +144,11 @@ async def abuse_watcher(client, message: Message):
                 reply_markup=buttons
             )
             
-            # 10 Seconds baad warning delete (Clean chat)
+            # 10 Seconds baad warning delete
             await asyncio.sleep(10)
             await sent.delete()
             
         except Exception:
             # Agar bot ke paas delete permission nahi hai
             pass
-
+            
