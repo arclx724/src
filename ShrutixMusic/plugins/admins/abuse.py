@@ -17,7 +17,7 @@ from ShrutixMusic.utils.db import (
 )
 
 # === CONFIGURATION ===
-SUPPORT_LINK = "https://t.me/ShrutiBots" 
+SUPPORT_LINK = "https://t.me/RoboKaty" 
 
 ABUSIVE_WORDS = [
     "aand", "aandu", "ass", "asshole", "b.c", "b.k.l", "b.s.d.k", 
