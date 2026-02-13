@@ -115,7 +115,7 @@ async def anti_edit_watcher(client, message: Message):
 
     buttons = InlineKeyboardMarkup([
         [InlineKeyboardButton("➕ Add Me", url=f"https://t.me/{bot_username}?startgroup=true")],
-        [InlineKeyboardButton("Support", url=https://t.me/RoboKaty)]
+        [InlineKeyboardButton("Support", url="https://t.me/RoboKaty")]
     ])
 
     try:
