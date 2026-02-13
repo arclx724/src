@@ -1,43 +1,59 @@
 import asyncio
-from pyrogram import Client, filters
-from pyrogram.types import ChatPermissions
+from pyrogram import filters
 from pyrogram.errors import ChatAdminRequired, UserAdminInvalid
+from pyrogram.enums import ChatMemberStatus
 
-from ShrutixMusic import app
+from ShrutixMusic import nand
 from ShrutixMusic.misc import SUDOERS
-from ShrutixMusic.utils.database import add_sudo
 
-# ================= SETTINGS STORAGE =================
+# ==========================================================
+#                  STORAGE (Temporary Memory)
+# ==========================================================
 
 NSFW_SETTINGS = {}
 
-# ================= HELPER FUNCTIONS =================
+# ==========================================================
+#                  HELPER FUNCTIONS
+# ==========================================================
 
 async def is_owner_or_sudo(user_id: int):
-    if user_id in SUDOERS:
+    return user_id in SUDOERS
+
+
+async def has_change_info_permission(chat_id, user_id):
+    member = await nand.get_chat_member(chat_id, user_id)
+    if member.status == ChatMemberStatus.OWNER:
         return True
+    if member.status == ChatMemberStatus.ADMINISTRATOR:
+        return member.privileges.can_change_info
     return False
 
 
-async def can_change_info(client, chat_id, user_id):
-    member = await client.get_chat_member(chat_id, user_id)
-    return member.privileges and member.privileges.can_change_info
-
-
-async def bot_has_delete_rights(client, chat_id):
-    bot = await client.get_chat_member(chat_id, "me")
+async def bot_can_delete(chat_id):
+    bot = await nand.get_chat_member(chat_id, "me")
     return bot.privileges and bot.privileges.can_delete_messages
 
 
-async def bot_has_ban_rights(client, chat_id):
-    bot = await client.get_chat_member(chat_id, "me")
+async def bot_can_ban(chat_id):
+    bot = await nand.get_chat_member(chat_id, "me")
     return bot.privileges and bot.privileges.can_restrict_members
 
 
-# ================= ADDAMTHY COMMAND =================
+def init_chat(chat_id):
+    NSFW_SETTINGS.setdefault(chat_id, {
+        "enabled": False,
+        "silent": False,
+        "punish": False,
+        "warns": {}
+    })
 
-@app.on_message(filters.command("addamthy") & filters.private)
-async def addamthy_command(client, message):
+
+# ==========================================================
+#                  /addamthy
+# ==========================================================
+
+@nand.on_message(filters.command("addamthy") & filters.private)
+async def addamthy_handler(client, message):
 
     if not await is_owner_or_sudo(message.from_user.id):
         return await message.reply_text(
@@ -49,33 +65,29 @@ async def addamthy_command(client, message):
 
     try:
         user_id = int(message.command[1])
-        await add_sudo(user_id)
-        await message.reply_text(f"✅ Successfully added `{user_id}` as Sudo.")
+        SUDOERS.add(user_id)
+        await message.reply_text(f"✅ {user_id} added as Sudo user.")
     except Exception as e:
         await message.reply_text(f"❌ Error: {e}")
 
 
-# ================= MASTER NSFW =================
+# ==========================================================
+#                  /nsfw (MASTER)
+# ==========================================================
 
-@app.on_message(filters.command("nsfw") & filters.group)
-async def nsfw_toggle(client, message):
+@nand.on_message(filters.command("nsfw") & filters.group)
+async def nsfw_master(client, message):
 
-    if not await can_change_info(client, message.chat.id, message.from_user.id):
+    if not await has_change_info_permission(message.chat.id, message.from_user.id):
         return await message.reply_text(
-            "❌ You need 'Change Group Info' permission to use this."
+            "❌ You need 'Change Group Info' permission."
         )
 
     if len(message.command) < 2:
         return await message.reply_text("Usage: /nsfw on/off")
 
     chat_id = message.chat.id
-
-    NSFW_SETTINGS.setdefault(chat_id, {
-        "enabled": False,
-        "silent": False,
-        "punish": False,
-        "warns": {}
-    })
+    init_chat(chat_id)
 
     if message.command[1].lower() == "on":
         NSFW_SETTINGS[chat_id]["enabled"] = True
@@ -85,137 +97,150 @@ async def nsfw_toggle(client, message):
         await message.reply_text("❌ NSFW Protection Disabled.")
 
 
-# ================= SILENT =================
+# ==========================================================
+#                  /nsfwsilent
+# ==========================================================
 
-@app.on_message(filters.command("nsfwsilent") & filters.group)
+@nand.on_message(filters.command("nsfwsilent") & filters.group)
 async def nsfw_silent(client, message):
 
-    if not await can_change_info(client, message.chat.id, message.from_user.id):
+    if not await has_change_info_permission(message.chat.id, message.from_user.id):
         return await message.reply_text(
             "❌ You need 'Change Group Info' permission."
         )
 
     chat_id = message.chat.id
-    settings = NSFW_SETTINGS.get(chat_id)
+    init_chat(chat_id)
 
-    if not settings or not settings["enabled"]:
+    if not NSFW_SETTINGS[chat_id]["enabled"]:
         return await message.reply_text("⚠ Enable /nsfw on first.")
 
     if len(message.command) < 2:
         return await message.reply_text("Usage: /nsfwsilent on/off")
 
-    settings["silent"] = message.command[1].lower() == "on"
+    NSFW_SETTINGS[chat_id]["silent"] = message.command[1].lower() == "on"
 
     await message.reply_text(
-        f"✅ Silent Mode {'Enabled' if settings['silent'] else 'Disabled'}."
+        f"✅ Silent Mode {'Enabled' if NSFW_SETTINGS[chat_id]['silent'] else 'Disabled'}."
     )
 
 
-# ================= PUNISH =================
+# ==========================================================
+#                  /nsfwpunish
+# ==========================================================
 
-@app.on_message(filters.command("nsfwpunish") & filters.group)
+@nand.on_message(filters.command("nsfwpunish") & filters.group)
 async def nsfw_punish(client, message):
 
-    if not await can_change_info(client, message.chat.id, message.from_user.id):
+    if not await has_change_info_permission(message.chat.id, message.from_user.id):
         return await message.reply_text(
             "❌ You need 'Change Group Info' permission."
         )
 
     chat_id = message.chat.id
-    settings = NSFW_SETTINGS.get(chat_id)
+    init_chat(chat_id)
 
-    if not settings or not settings["enabled"]:
+    if not NSFW_SETTINGS[chat_id]["enabled"]:
         return await message.reply_text("⚠ Enable /nsfw on first.")
 
     if len(message.command) < 2:
         return await message.reply_text("Usage: /nsfwpunish on/off")
 
-    settings["punish"] = message.command[1].lower() == "on"
+    NSFW_SETTINGS[chat_id]["punish"] = message.command[1].lower() == "on"
 
     await message.reply_text(
-        f"⚔ Smart Punish {'Enabled' if settings['punish'] else 'Disabled'}."
+        f"⚔ Punish Mode {'Enabled' if NSFW_SETTINGS[chat_id]['punish'] else 'Disabled'}."
     )
 
 
-# ================= COMMAND LIST =================
+# ==========================================================
+#                  /nsfwcommands
+# ==========================================================
 
-@app.on_message(filters.command(["nsfwcommands", "nsfwcommand"]) & filters.group)
-async def nsfw_commands(client, message):
+@nand.on_message(filters.command(["nsfwcommands", "nsfwcommand"]) & filters.group)
+async def nsfw_help(client, message):
 
     text = """
-📛 **NSFW Protection Commands**
+📛 <b>NSFW Protection Commands</b>
 
-/nsfw on/off → Master Switch
-/nsfwsilent on/off → Silent Delete Mode
-/nsfwpunish on/off → Auto Ban After 3 Warnings
-/addamthy user_id → Add Sudo (Owner Only)
+• /nsfw on/off → Enable or Disable Protection
+• /nsfwsilent on/off → Silent Delete Mode
+• /nsfwpunish on/off → Auto Ban After 3 Warnings
+• /addamthy user_id → Add Sudo (Owner Only)
+
+⚠ Only admins with Change Info rights can use control commands.
 """
 
     await message.reply_text(text)
 
 
-# ================= NSFW WATCHER =================
+# ==========================================================
+#                  NSFW WATCHER
+# ==========================================================
 
-@app.on_message(filters.group & (filters.sticker | filters.photo | filters.video))
+@nand.on_message(filters.group & (filters.sticker | filters.photo | filters.video))
 async def nsfw_watcher(client, message):
 
     chat_id = message.chat.id
-    settings = NSFW_SETTINGS.get(chat_id)
+    init_chat(chat_id)
 
-    if not settings or not settings["enabled"]:
+    settings = NSFW_SETTINGS[chat_id]
+
+    if not settings["enabled"]:
         return
-
-    if not await bot_has_delete_rights(client, chat_id):
-        return await message.reply_text(
-            "❌ I don't have permission to delete messages."
-        )
 
     user = message.from_user
     if not user:
         return
 
-    member = await client.get_chat_member(chat_id, user.id)
-    if member.status in ["administrator", "creator"]:
+    member = await nand.get_chat_member(chat_id, user.id)
+
+    if member.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]:
         return
+
+    if not await bot_can_delete(chat_id):
+        return await message.reply_text(
+            "❌ I don't have delete permission."
+        )
 
     try:
         await message.delete()
     except ChatAdminRequired:
         return
 
-    # WARNING SYSTEM
+    # WARN SYSTEM
     warns = settings["warns"]
     warns[user.id] = warns.get(user.id, 0) + 1
     count = warns[user.id]
 
     if not settings["silent"]:
-        warn_msg = await client.send_message(
+        warn_msg = await nand.send_message(
             chat_id,
             f"⚠ {user.mention}\n"
-            f"Your message contains NSFW content and was removed.\n"
+            f"Your message contains restricted content and was removed.\n"
             f"Warnings: {count}/3"
         )
 
         await asyncio.sleep(60)
         await warn_msg.delete()
 
-    # BAN IF ENABLED
+    # AUTO BAN
     if settings["punish"] and count >= 3:
 
-        if not await bot_has_ban_rights(client, chat_id):
-            return await client.send_message(
+        if not await bot_can_ban(chat_id):
+            return await nand.send_message(
                 chat_id,
                 "❌ I don't have ban permission."
             )
 
         try:
-            await client.ban_chat_member(chat_id, user.id)
-            await client.send_message(
+            await nand.ban_chat_member(chat_id, user.id)
+            await nand.send_message(
                 chat_id,
                 f"🚫 {user.mention} has been banned (3/3 warnings)."
             )
         except UserAdminInvalid:
-            await client.send_message(
+            await nand.send_message(
                 chat_id,
                 "❌ Cannot ban this user."
             )
