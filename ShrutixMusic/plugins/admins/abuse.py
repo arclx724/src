@@ -130,8 +130,8 @@ async def abuse_watcher(client, message: Message):
             # HTML escape taki user ke symbols bot ko crash na karein
             safe_text = html.escape(text)
             
-            # Gaaliyo par Telegram ka asli Spoiler Tag lagana
-            censored_text = ABUSE_PATTERN.sub(lambda m: f"<tg-spoiler>{m.group(0)}</tg-spoiler>", safe_text)
+            # YAHAN FIX KIYA HAI: Pyrogram ka sahi <spoiler> tag lagaya hai
+            censored_text = ABUSE_PATTERN.sub(lambda m: f"<spoiler>{m.group(0)}</spoiler>", safe_text)
             
             bot_username = client.me.username if client.me else BOT_USERNAME
 
@@ -152,7 +152,7 @@ async def abuse_watcher(client, message: Message):
             sent = await message.reply_text(
                 warning_text,
                 reply_markup=buttons,
-                parse_mode=ParseMode.HTML # <--- ParseMode HTML zaroori hai taaki spoiler tag kaam kare
+                parse_mode=ParseMode.HTML # <--- ParseMode HTML
             )
             
             # Exactly 60 seconds baad message auto delete
