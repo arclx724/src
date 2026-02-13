@@ -16,8 +16,6 @@ BOT_TOKEN = getenv("BOT_TOKEN")
 # --- NEWLY ADDED FOR FEATURES ---
 # Bot Username (without @) required for button links
 BOT_USERNAME = getenv("BOT_USERNAME", "BillieMusicbot")
-# AI Key for Anti-Abuse (Get from https://openrouter.ai/)
-OPENROUTER_API_KEY = getenv("OPENROUTER_API_KEY", "")
 # --------------------------------
 
 # Get your mongo url from cloud.mongodb.com
